@@ -1,0 +1,240 @@
+﻿@using Ogle
+@model LogsViewModel
+@{
+    ViewBag.Title = "Request Logs";
+}
+<style>
+    .container {
+        max-width: initial !important;
+        font-size: smaller;
+    }
+
+    #logsContainer {
+        margin-top: 10px;
+        overflow: hidden;
+        white-space: pre;
+        max-height: 80vh;
+    }
+
+    #loader {
+        display: none;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 1;
+        width: 150px;
+        height: 150px;
+        margin: -75px 0 0 -75px;
+        border: 16px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 16px solid #3498db;
+        width: 120px;
+        height: 120px;
+        animation: spin 2s linear infinite;
+    }
+
+    pre {
+        font-size: 0.9em !important;
+    }
+
+    select option {
+        color: initial;
+    }
+
+    select option[value=""] {
+        color: gray;
+    }
+
+    @@keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .animate-bottom {
+        position: relative;
+        animation-name: animebottom;
+        animation-duration: 1s;
+    }
+
+    @@keyframes animatebottom {
+        from {
+            bottom: -100px;
+        }
+
+        to {
+            bottom: 0;
+            opacity: 1
+        }
+    }
+</style>
+
+<h2>@(ViewBag.Title)</h2>
+
+<div>
+    <form>
+        <label for="hostname">Date:</label>
+        <input type="date" id="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@Model.Date?.ToString("yyyy-MM-dd")" />
+        <select id="hostname">
+        @{
+            var defaultSelected = string.IsNullOrWhiteSpace(Model.HostName) ? " selected=\"selected\"" : string.Empty;
+
+            @Html.Raw($"\t\t\t<option value=\"\"{defaultSelected}>Machine</option>\n");
+
+            foreach(var serverUrl in Model.ServerSelectList)
+            {
+                var serverName = serverUrl.Text;
+                var selected = string.Equals(Model.HostName, serverName, StringComparison.InvariantCultureIgnoreCase) ? " selected=\"selected\"" : string.Empty;
+
+                @Html.Raw($"\t\t\t<option value=\"{serverName}\"{selected}>{serverName}</options>\n");
+            }
+        }
+        </select>
+        <input type="text" id="id" title="RequestId" placeholder="RequestId" style="width: 600px; max-width: 600px;" value="@(Model.Id)" />
+        <input type="submit" id="showButton" value="Fetch request logs" onclick="redirect(); return false;" />
+        <input type="submit" id="browseButton" value="Browse application logs" onclick="getLogFileList(); return false;" />
+        <input type="checkbox" id="wordWrap" onclick="toggleWordWrap();" /> Wrap text
+    </form>
+</div>
+<div id="loader" class="loader"></div>
+<pre id="logsContainer"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
+<script>
+    function toggleWordWrap() {
+        var wordWrap = $('#wordWrap').prop('checked');
+
+        if (wordWrap) {
+            $('#logsContainer').css('white-space', 'pre-wrap');
+        } else {
+            $('#logsContainer').css('white-space', 'pre');
+        }
+    }
+
+    function updateDataForServer(url) {
+        return $.ajax({
+            url: url,
+            xhrFields: {
+                withCredentials: true
+            },
+            success: function (result) {
+                if (result != null) {
+                    $('#logsContainer').append(result);
+                    $('#logsContainer').css('overflow', 'auto');
+                }
+            }
+        });
+    }
+
+    function getRandomInt(max) {
+        return Math.floor(Math.random() * Math.floor(max));
+    }
+
+    function redirect() {
+        var url = "@(Url.Action("Index", "ogle"))";
+        var requestId = $('#id').val().trim();
+        var date = $('#date').val();
+        var hostname = $('#hostname').val();
+
+        if (requestId) {
+            var url = url + "?id=" + requestId;
+
+            if (date) {
+                url = url + "&date=" + date;
+            }
+
+            if (hostname) {
+                url = url + "&hostname=" + hostname;
+            }
+
+            window.location.href = url;
+        }
+    }
+
+    function getLogs() {
+        $('#logsContainer').css('overflow', 'inherit');
+        if ($('#id').val().trim() == '') {
+            $('#logsContainer').html('No request id specified');
+            return;
+        }
+
+        $('#logsContainer').html('');
+        $('#loader').show();
+
+        var requests = [];
+        @{
+            @Html.Raw("\n\t\t\tvar hostname=$(\"#hostname\").val();\n");
+
+            foreach(var serverUrl in Model.ServerSelectList)
+            {
+                var serverName = serverUrl.Text;
+
+                @Html.Raw($"\t\t\tif (!hostname || hostname == '{serverName}')\n");
+                @Html.Raw("\t\t\t{\n");
+                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}ogle/GetLogs?date=' + $(\"#date\").val() + '&id=' + $(\"#id\").val() + '&rand=' + getRandomInt(1000)));\n");
+                @Html.Raw("\t\t\t}\n");
+            }
+        }
+        $.when.apply($, requests).done(function () {
+            $('#loader').hide();
+        });
+    }
+
+    function getLogFileList() {
+        $('#logsContainer').css('overflow', 'inherit');
+        if ($('#hostname').val().trim() == '') {
+            $('#logsContainer').html('No request id specified');
+            return;
+        }
+
+        $('#logsContainer').html('');
+        $('#loader').show();
+
+        var requests = [];
+        @{
+            @Html.Raw("\n\t\t\tvar hostname=$(\"#hostname\").val();\n");
+
+            foreach(var serverUrl in Model.ServerSelectList)
+            {
+                var serverName = serverUrl.Text;
+
+                @Html.Raw($"\t\t\tif (!hostname || hostname == '{serverName}')\n");
+                @Html.Raw("\t\t\t{\n");
+                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}ogle/BrowseLogFiles?date=' + $(\"#date\").val() + '&rand=' + getRandomInt(1000)));\n");
+                @Html.Raw("\t\t\t}\n");
+            }
+        }
+        $.when.apply($, requests).done(function () {
+            $('#loader').hide();
+        });
+    }
+
+    if ('@(Model.Id))') {
+        getLogs();
+    }
+
+    $.fn.extend({
+        setColorBasedOnValue: function () {
+            return this.each(function () {
+                var value = $(this).val();
+
+                if (value == '') {
+                    $(this).css('color', 'gray');
+                } else {
+                    $(this).css('color', 'black');
+                }
+            });
+        }
+    });
+
+    $(document).ready(function () {
+        $('select,#date').setColorBasedOnValue();
+        $('select,#date').change(function () {
+            $(this).setColorBasedOnValue();
+        });
+    });
+</script>

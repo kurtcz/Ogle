@@ -1,0 +1,612 @@
+﻿@using Ogle
+@using Microsoft.Extensions.Options
+@using System.Text
+@inject IOptionsMonitor<OgleOptions> settings;
+@model MetricsViewModel
+@{
+    ViewBag.Title = "Log Metrics";
+}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script src="~/_content/Ogle/js/chart.plugin.datatable-filler.js"></script>
+
+<style>
+    .container {
+        max-width: initial !important;
+        font-size: smaller;
+    }
+
+    #chartModesContainer {
+        float: right;
+    }
+
+    #viewButtonsContainer {
+        margin-top: 10px;
+        text-align: center;
+    }
+
+    #chartLabel {
+        text-align: center;
+    }
+
+    #canvas {
+        max-width: 62%;
+        margin: auto;
+        display: block;
+    }
+
+    #dataTable {
+        display: none;
+        overflow-x: auto;
+    }
+
+    #dataTable tr {
+        border-bottom: 1px solid lightgray;
+    }
+
+    #dataTable th {
+        padding: 5px 10px;
+        text-align: center;
+    }
+
+@if (Model.CanDrillDown)
+    {
+    @Html.Raw("\t#dataTable tr:first-of-type th:not(:first-of-type):not(:last-of-type):hover {\n");
+    @Html.Raw("\t\ttext-decoration: underline;\n");
+    @Html.Raw("\t\tcursor: pointer;\n");
+    @Html.Raw("\t}\n");
+}
+    #dataTable td {
+        padding: 5px 10px;
+        text-align: center;
+    }
+
+    #loader {
+        display: none;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 1;
+        width: 150px;
+        height: 150px;
+        margin: -75px 0 0 -75px;
+        border: 16px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 16px solid #3498db;
+        width: 120px;
+        height: 120px;
+        animation: spin 2s linear infinite;
+    }
+
+    @@keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .animate-bottom {
+        position: relative;
+        animation-name: animebottom;
+        animation-duration: 1s;
+    }
+
+    @@keyframes animatebottom {
+        from {
+            bottom: -100px;
+        }
+
+        to {
+            bottom: 0;
+            opacity: 1
+        }
+    }
+</style>
+
+<h2>@(ViewBag.Title)</h2>
+
+<div id="chartModesContainer">
+    @{
+        var i = 0;
+        foreach (var prop in Model.KeyProperties)
+        {
+            if (prop != Model.TimeBucketProperty)
+            {
+                <input type="button" id="@($"chartMode-{prop}")" value="Group by @(Model.KeyPropertyDisplayNames[i].ToLower())" onclick="chartMode = '@prop'; showMetrics();" />
+            }
+            i++;
+        }
+    }
+</div>
+<div>
+    <form onsubmit="getMetrics(); return false;">
+        <label for="date">Date:</label>
+        <input type="date" id="date" value="@Model.Date.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+        <input type="submit" id="showButton" value="Fetch metrics" onclick="getMetrics(); return false;" />
+    </form>
+</div>
+<div>
+    <h4 id="chartLabel"></h4>
+    <div id="loader" class="loader"></div>
+    <canvas id="canvas"></canvas>
+</div>
+<div id="viewButtonsContainer">
+    @{
+        i = 0;
+        foreach (var prop in Model.ValueProperties)
+        {
+            <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+            i++;
+        }
+    }
+</div>
+<div id="dataTable"></div>
+
+<script>
+    function pad(num, size) {
+        var s = num + '';
+
+        while (s.length < size) {
+            s = '0' + s;
+        }
+
+        return s;
+    }
+
+@{
+    var initialChartData = new StringBuilder("{\n\tbucketNames: []");
+
+    i = 0;
+    foreach (var prop in Model.ValueProperties)
+    {
+        initialChartData.Append($",\n\t{prop}: []");
+    }
+    initialChartData.Append("\n}");
+}
+    function resetDataResponses() {
+        return @Html.Raw(initialChartData.ToString());
+    }
+
+    var serverNames = [@Html.Raw(string.Join(", ", Model.ServerUrls.Select(i => $"'{new Uri(i).Host.ToLower()}'")))];
+    var datasetColors = [@Html.Raw(string.Join(", ", settings.CurrentValue.DatasetColors.Select(i => $"'{i}'")))];
+    var chartDatasets = [];
+@{
+    foreach (var prop in Model.KeyProperties.Where(i => i != Model.TimeBucketProperty))
+    {
+        @Html.Raw($"\tchartDatasets['{prop}'] = {initialChartData};\n");
+    }
+}
+    var dataResponses = resetDataResponses();
+    var ctx = $("#canvas")[0].getContext('2d');
+    var config = {
+        type: 'line',
+        data: {
+            //TODO: make this generic (currently we assume 60 minutes per bucket)
+            labels: [@Html.Raw(string.Join(", ", Enumerable.Range(0, Model.NumberOfBuckets).Select(i => string.Format("'{0}:00'", i))))],
+            datasets: []
+        },
+        options: {
+            scales: {
+                yAxes: [{
+                    stacked: true
+                }]
+            },
+            elements: {
+                line: {
+                    tension: 0.1    //0 = sharp edges, 0.5 = smoother, 1 = smooth
+                }
+            },
+            tooltips: {
+                callbacks: {
+                    label: function (toolTipItem, data) {
+                        var label = data.datasets[toolTipItem.datasetIndex].label + ': ';
+
+                        switch (activeTab) {
+
+                        }
+                    }
+                }
+            },
+            plugins: {
+                'datatable-filler': {
+                    target: 'dataTable',
+                    aggregateRows: 'sum',
+                    datasetHeaderRowStyle: function () {
+                        return '';
+                    },
+                    datasetHeaderCellStyle: function (column) {
+                        return '';
+                    },
+                    datasetRowStyle: function (row, borderColor, backgroundColor) {
+                        return 'border-bottom: thin solid' + borderColor + ';';
+                    },
+                    datasetLabelCellStyle: function (row, borderColor, backgroundColor) {
+                        return 'background: ' + borderColor + '20; border-bottom: medium solid' + borderColor + ';';
+                    },
+                    datasetCellStyle: function () {
+                        return '';
+                    },
+                    datasetGrandTotalStyle: function () {
+                        return 'border-bottom: doube black; font-size: large;';
+                    },
+                    callback: function (value) {
+                        switch (activeTab) {
+@{
+    i = 0;
+    if (Model.ValuePropertyTypes.Any(j => j == "TimeSpan"))
+    {
+        foreach (var prop in Model.ValueProperties)
+        {
+            if (Model.ValuePropertyTypes[i] == "TimeSpan")
+            {
+                @Html.Raw($"\t\t\t\t\t\tcase '{prop}':\n");
+            }
+            i++;
+        }
+        @Html.Raw("\t\t\t\t\t\t\treturn secondsToTimeFormat(Number(value));\n");
+    }
+}
+                            default:
+                                return Number(value).toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    for (var i in serverNames) {
+        config.data.datasets[i] = {
+            label: serverNames[i],
+            borderColor: datasetColors[i % datasetColors.length],
+        };
+    }
+
+    function secondsToTimeFormat(value) {
+        if (!Number.isInteger(value)) {
+            return '';
+        }
+        var hours = Math.floor(value / 3600);
+        value -= hours * 3600;
+        var minutes = Math.floor(value / 60);
+        value -= minutes * 60;
+        var seconds = value;
+
+        return pad(hours, 2) + ':' + pad(minutes, 2) + ':' + pad(seconds, 2);
+    }
+
+    var defaultYAxisTicks = {
+        callback: function (value, index, values) {
+            return value.toLocaleString();
+        }
+    };
+    var timeYAxisTicks = {
+        callback: function (value, index, values) {
+            return secondsToTimeFormat(value);
+        }
+    };
+    var chartMode = '@(Model.KeyProperties.FirstOrDefault(j => j != Model.TimeBucketProperty))';
+    var activeTab = '@(Model.ValueProperties.FirstOrDefault())';
+    var chart = new Chart(ctx, config);
+
+    Object.defineProperty(Array.prototype, "distinctCaseInsensitive", {
+        value: function () {
+            var self = this;
+            var uNames = new Map(self.map(s => [(s != null ? s.toLowerCase() : s), s]));  //map can contain each (lowercase) key only once
+            var result = [...uNames.values()];                                          //return the original value assicated with the lowercase key
+
+            return result;
+        },
+        enumerable: false
+    });
+
+    Object.defineProperty(Array.prototype, "findKeyCaseInsensitive", {
+        value: function (prop) {
+            var key, self = this;
+
+            for (var key in self) {
+                if ((key != null ? key.toLocaleLowerCase() : null) == (prop != null ? prop.toLowerCase() : null)) {
+                    return key;
+                }
+            }
+        },
+        //this keeps jquery happy
+        enumerable: false
+    });
+
+    $(document).ready(function () {
+        $('#viewButtonsContainer input[type=button]')[0].click();
+    });
+
+    function onViewButtonClick(event) {
+        var $viewButton = $(event.target);
+
+        $('#chartLabel').text($viewButton.attr('value'));
+        $('#viewButtonsContainer input[type=button]').css('background-color', '');
+        $viewButton.css('background-color', 'lightblue');
+
+        activeTab = $viewButton.data('type');
+        showMetrics();
+    }
+
+    function FillDataset(operation, data, bucketNames, keys, keyAccessor, valueAccessor, additionalParams) {
+        var result = [];
+
+        //concatenate expected keys with actual keys returned by the keyAccessor (to allow for rows with no data to show)
+        keys = [...keys, ...data.map(i => keyAccessor(i))].distinctCaseInsensitive().sort();
+
+        for (var n in keys) {
+            var key = keys[n] || '?';
+            result[key] = [];
+            for (var i = 0; i < bucketNames.length; i++) {
+                result[key].push(0);
+            }
+        }
+
+        for (var n in data) {
+            var key = result.findKeyCaseInsensitive(keyAccessor(data[n]) || '?');
+            var val = valueAccessor(data[n]);
+            var bucket = bucketNames.indexOf(data[n].bucket);
+
+            if (operation == 'min' && result[key][bucket] == 0) {
+                result[key][bucket] = Number.MAX_VALUE;
+            }
+
+            switch (operation) {
+                case 'sum':
+                    result[key][bucket] += val;
+                    break;
+                case 'max':
+                    result[key][bucket] = Math.max(val, result[key][bucket]);
+                    break;
+                case 'min':
+                    result[key][bucket] = Math.min(val, result[key][bucket]);
+                    break;
+                case 'avg':
+                    var weight = additionalParams.weightData[n].value;
+                    var totalWeight = additionalParams.weightData
+                                                        .filter(i => key.toLowerCase() == (keyAccessor(i) || '?').toLowerCase() && data[n].bucket == i.bucket)
+                                                        .map(i => additionalParams.weightDataAccessor(i))
+                                                        .reduce((a, b) => a + b, 0); //sum of an aray
+                    result[key][bucket] += val * weight /totalWeight;
+                    break;
+            }
+        }
+
+        //round the results of average operation
+        if (operation == 'avg') {
+            for (var key in result) {
+                for (var bucket in result[key]) {
+                    result[key][bucket] = Math.round(result[key][bucket]);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    function parseTimeSpan(str) {
+        //TODO: handle TimeSpans which include days
+        var tokens = str.split(':');
+
+        val = parseInt(tokens[0]) * 3600 + parseInt(tokens[1]) * 60 + parseInt(tokens[2]);
+
+        return val;
+    }
+
+    function transformData(data) {
+        var result = {
+            bucketNames: [@Html.Raw(string.Join(", ", Model.TimeBuckets))],
+@{
+    //Transform data from
+    //[{keyProperty1: a, keyProperty2: b, ..., valueProperty1: x, valueProperty2: y, ...}, ...] to
+    //[{valueProperty1: {keyProperty1: a, keyProperty2: b, value: x}, valueProperty2: {keyProperty1: a, keyProperty2: b, value: y}, ...]
+    var props = "";
+    var keyProps = "";
+
+    foreach (var prop in Model.KeyProperties)
+    {
+        if (prop == Model.TimeBucketProperty)
+        {
+            keyProps += $"\t\t\t\t\tbucket: i.{prop}.substr(11, 5),\n";
+        }
+        else
+        {
+            keyProps += $"\t\t\t\t\t{prop}: i.{prop},\n";
+        }
+    }
+
+    foreach (var prop in Model.ValueProperties)
+    {
+        if (props.Length != 0)
+        {
+            props += ",\n";
+        }
+        props += $"\t\t\t{prop}: data.map(i => {{\n\t\t\treturn {{\n{keyProps}\t\t\t\t\tvalue: i.{prop}\n\t\t\t}}\n\t\t\t}})";
+    }
+    @Html.Raw(props);
+}
+        };
+
+        return result;
+    }
+
+    function updateChartData(url) {
+        return $.ajax({
+            url: url,
+            xhrFields: {
+                withCredentials: true
+            }
+        }).done(function (result) {
+            result = transformData(result);
+
+            if (dataResponses.bucketNames.length == 0) {
+                dataResponses.bucketNames = result.bucketNames;
+            }
+@{
+    foreach (var prop in Model.ValueProperties)
+    {
+        @Html.Raw($"\t\t\tdataResponses.{prop}.push(...result.{prop});\n");
+    }
+}
+
+            var avgAdditionalParams = {
+                weightData: dataResponses.@(Model.TotalProperty),
+                weightDataAccessor: x => x.value
+            };
+            var keys = [];
+@{
+    foreach (var key in Model.KeyProperties.Where(j => j != Model.TimeBucketProperty))
+    {
+        i = 0;
+        @Html.Raw($"\t\t\tkeys['{key}'] = dataResponses.totalRequests.map(i => i.{key});\n");
+        foreach(var prop in Model.ValueProperties)
+        {
+            var valueAccessor = Model.ValuePropertyTypes[i] == "TimeSpan" ? "x => parseTimeSpan(x.value)" : "x => x.value";
+            var additionalParams = Model.ValuePropertyAggregationOperation[i] == "avg" ? ", avgAdditionalParams" : string.Empty;
+
+            @Html.Raw($"\t\t\tchartDatasets['{key}'].{prop} = FillDataset('{Model.ValuePropertyAggregationOperation[i]}', dataResponses.{prop}, dataResponses.bucketNames, keys['{key}'], x => x.{key}, {valueAccessor}{additionalParams});\n");
+            i++;
+        }
+    }
+}
+            showMetrics();
+        });
+    }
+
+    function getRandomInt(max) {
+        return Math.floor(Math.random() * Math.floor(max));
+    }
+
+    function getMetrics() {
+        var ajaxPromises = [];
+
+        dataResponses = resetDataResponses();
+
+        $('#loader').show();
+        var url = '/ogle/GetMetricsFromAllServers?date=' + $('#date').val() + '&hourFrom=' + @(Model.HourFrom) + '&minuteFrom=' + @(Model.MinuteFrom) + '&minutesPerBucket=' + @(Model.MinutesPerBucket) + '&numberOfBuckets=' + @(Model.NumberOfBuckets)  + '&rand=' + getRandomInt(1000);
+        ajaxPromises[0] = updateChartData(url);
+
+        $.when.apply($, ajaxPromises).done(function () {
+            $('#loader').hide();
+        });
+    }
+
+    function showMetrics() {
+        $('#chartModesContainer input[type=button]').css('background-color', '');
+        $('#chartMode-' + chartMode).css('background-color', 'lightblue');
+
+        if (dataResponses.@(Model.TotalProperty).length == 0) {
+            return;
+        }
+        var ticks = null;
+
+        switch (activeTab) {
+@{
+    //Format Y axis tickmarks for TimeSpan values if needed
+    if (Model.ValuePropertyTypes.Any(j => j == "TimeSpan"))
+    {
+        i = 0;
+        foreach(var prop in Model.ValueProperties)
+        {
+            if (Model.ValuePropertyTypes[i] == "TimeSpan")
+            {
+                @Html.Raw($"\t\t\tcase '{prop}':\n");
+            }
+            i++;
+        }
+    }
+}
+                ticks = timeYAxisTicks;
+                break;
+            default:
+                ticks = defaultYAxisTicks;
+                break;
+        }
+
+        var chartData = chartDatasets[chartMode];
+        var datasets = {};
+        var labels = {};
+        var stacked = true;
+        var aggregateRows = false;
+
+        switch (activeTab) {
+@{
+    //Populate variables that determine how to render chart datasets based on a metric type
+    i = 0;
+    foreach(var prop in Model.ValueProperties)
+    {
+        var stacked = Model.ValuePropertyAggregationOperation[i] == "sum" ? "true" : "false";
+        var body = $@"
+            case '{prop}':
+                datasets = Object.values(chartData.{prop});
+                labels = Object.keys(chartData.{prop});
+                stacked = {stacked};
+                aggregateRows = '{Model.ValuePropertyAggregationOperation[i]}';
+                break;
+";
+        @Html.Raw(body);
+        i++;
+    }
+}
+        }
+
+        config.options.scales.yAxes = [{
+            stacked: stacked,
+            ticks: ticks
+        }];
+        config.options.plugins['datatable-filler'].aggregateRows = aggregateRows;
+        config.data.labels = dataResponses.bucketNames;
+        config.data.datasets = [];
+
+        for (var i in labels) {
+            config.data.datasets[i] = {
+                label: labels[i],
+                data: datasets[i],
+                borderColor: datasetColors[i % datasetColors.length],
+                backgroundColor: datasetColors[i % datasetColors.length] + (stacked ? 'dd' : '20')
+            };
+        }
+
+        chart.update();
+        $('#chartModesContainer').show();
+        $('#dataTable').show();
+        $('#loader').hide();
+
+        $('#dataTable tr td, #dataTable tr th:not(:first-of-type):not(:last-of-type)').hover(function () {
+            var underlineColor = $(this).parent().css('border-bottom-color');
+            var bgColor = underlineColor.replace('rgb', 'rgba').replace(')', ', 0.125)');
+            var columnNumber = $(this).index();
+
+            $(this).parent().css('background-color', bgColor);
+            $('colgroup > col').eq(columnNumber).css('background-color', bgColor);
+        }, function () {
+            var columnNumber = $(this).index();
+
+            $(this).parent().css('background-color', 'initial');
+            $('colgroup > col').eq(columnNumber).css('background-color', 'initial');
+        });
+
+        var canDrillDown = @(Model.CanDrillDown ? "true" : "false");
+
+        if (canDrillDown) {
+            $('#dataTable tr:first-of-type th:not(:first-of-type):not(:last-of-type)').click(function () {
+                var date = $('#date').val();
+                var hour = $(this).text().substr(0, 2);
+
+                window.open('/ogle/metrics?date=' + date + '&hourFrom=' + hour + '&minutesPerBucket=@(Model.DrillDownMinutesPerBucket)&numberOfBuckets=@(Model.DrillDownNumberOfBuckets)&autoFetchData=true&canDrillDown=false', '_blank');
+            });
+        }
+    }
+
+    var autoFetchData = @(Model.AutoFetchData ? "true" : "false");
+
+    if (autoFetchData) {
+        $(document).ready(function () {
+            getMetrics();
+        });
+    }
+</script>
