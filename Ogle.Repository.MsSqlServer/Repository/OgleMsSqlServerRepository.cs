@@ -1,6 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Options;
-using Ogle;
+using Ogle.Repository.Sql;
 using System.Data;
 using System.Data.SqlClient;
 using System.Reflection;
@@ -8,53 +8,17 @@ using System.Text;
 
 namespace Ogle.Repository.MsSqlServer
 {
-    public class OgleSQLiteRepository<TMetrics> : ILogMetricsRepository<TMetrics>
+    public class OgleMsSqlServerRepository<TMetrics> : OgleSqlRepository<SqlConnection, TMetrics>
     {
-        private IOptionsMonitor<OgleMsSqlRepositoryOptions> _settings;
-
-        public OgleSQLiteRepository(IOptionsMonitor<OgleMsSqlRepositoryOptions> settings)
+        public OgleMsSqlServerRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings) : base(settings)
         {
-            _settings = settings;
         }
 
-        #region ILogMetricsRepository methods
-
-        public async Task<bool> DeleteMetrics(DateTime from, DateTime to)
-        {
-            using (var connection = new SqlConnection(_settings.CurrentValue.ConnectionString))
-            {
-                var sql = BuildDeleteCommand();
-                var deleted = await connection.ExecuteAsync(sql, new { from, to });
-
-                return deleted > 0;
-            }
-        }
-
-        public async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to)
-        {
-            using(var connection = new SqlConnection(_settings.CurrentValue.ConnectionString))
-            {
-                var sql = BuildSelectCommand();
-                var result = await connection.QueryAsync<TMetrics>(sql, new { from, to });
-
-                return result;
-            }
-        }
-
-        public async Task<bool> HasMetrics(DateTime from, DateTime to)
-        {
-            using (var connection = new SqlConnection(_settings.CurrentValue.ConnectionString))
-            {
-                var sql = BuildCountCommand();
-                var count = await connection.ExecuteAsync(sql, new { from, to });
-
-                return count > 0;
-            }
-        }
+        #region Overriden methods
 
         public async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics)
         {
-            var dt = new DataTable(_settings.CurrentValue.TableName);
+            var dt = new DataTable(Settings.CurrentValue.TableName);
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
             foreach(var prop in props)
@@ -75,11 +39,11 @@ namespace Ogle.Repository.MsSqlServer
 
             var rowsInserted = 0L;
 
-            using (var connection = new SqlConnection(_settings.CurrentValue.ConnectionString))
+            using (var connection = new SqlConnection(Settings.CurrentValue.ConnectionString))
             {
                 using (var bulk = new SqlBulkCopy(connection))
                 {
-                    bulk.DestinationTableName = _settings.CurrentValue.TableName;
+                    bulk.DestinationTableName = Settings.CurrentValue.TableName;
                     bulk.NotifyAfter = dt.Rows.Count;
                     bulk.SqlRowsCopied += (s, e) => rowsInserted += e.RowsCopied;
 
@@ -96,47 +60,95 @@ namespace Ogle.Repository.MsSqlServer
             return rowsInserted;
         }
 
+        protected override string BuildCreateTableCommand()
+        {
+            var sb = new StringBuilder($"IF OBJECT_ID(N'{Settings.CurrentValue.TableName}') IS NULL CREATE TABLE {Settings.CurrentValue.TableName} (_id INT IDENTITY PRIMARY KEY");
+            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
+
+            foreach (var prop in props)
+            {
+                var dbType = GetDbType(prop.GetType());
+
+                sb.Append($", {prop.Name} {dbType}");
+            }
+            sb.Append(")");
+
+            return sb.ToString();
+        }
+
         #endregion
 
         #region Private methods
 
-        private string BuildSelectCommand()
+        private static string GetDbType(Type type)
         {
-            var sql = new StringBuilder("SELECT ");
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
-            var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
+            string dbType;
 
-            var i = 0;
-            foreach(var prop in props)
+            if (type == typeof(bool) ||
+                type == typeof(bool?))
             {
-                if (i > 0)
-                {
-                    sql.Append(", ");
-                }
-                sql.Append(prop.Name);
-                i++;
+                dbType = "BIT";
             }
-            sql.Append($" FROM {_settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to");
+            else if (type == typeof(short) ||
+                     type == typeof(ushort) ||
+                     type == typeof(short?) ||
+                     type == typeof(ushort?))
+            {
+                dbType = "SMALLINT";
+            }
+            else if (type == typeof(int) ||
+                     type == typeof(uint) ||
+                     type == typeof(int?) ||
+                     type == typeof(uint?))
+            {
+                dbType = "INT";
+            }
+            else if (type == typeof(long) ||
+                     type == typeof(ulong) ||
+                     type == typeof(long?) ||
+                     type == typeof(ulong?))
+            {
+                dbType = "BIGINT";
+            }
+            else if (type == typeof(decimal) ||
+                     type == typeof(decimal?))
+            {
+                dbType = "DECIMAL";
+            }
+            else if (type == typeof(DateTime) ||
+                     type == typeof(DateTime?))
+            {
+                dbType = "DATETIME";
+            }
+            else if (type == typeof(TimeSpan) ||
+                     type == typeof(TimeSpan?))
+            {
+                dbType = "TIME";
+            }
+            else if (type == typeof(Guid) ||
+                     type == typeof(Guid?))
+            {
+                dbType = "UNIQUEIDENTIFIER";
+            }
+            else if (type == typeof(string))
+            {
+                dbType = "VARCHAR(MAX)";
+            }
+            else
+            {
+                throw new InvalidOperationException($"No DbType defined for .NET type {type.Name}");
+            }
 
-            return sql.ToString();
-        }
+            if (Nullable.GetUnderlyingType(type) != null)
+            {
+                dbType += " NOT NULL";
+            }
+            else
+            {
+                dbType += " NULL";
+            }
 
-        private string BuildDeleteCommand()
-        {
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
-            var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
-            var sql = $"DELETE FROM {_settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
-
-            return sql;
-        }
-
-        private string BuildCountCommand()
-        {
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
-            var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
-            var sql = $"SELECT COUNT(*) FROM {_settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
-
-            return sql;
+            return dbType;
         }
 
         #endregion

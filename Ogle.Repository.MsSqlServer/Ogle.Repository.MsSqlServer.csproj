@@ -8,17 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Ogle\Ogle.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="Configuration\" />
-    <None Remove="Extensions\" />
-    <None Remove="Repository\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Configuration\" />
-    <Folder Include="Extensions\" />
-    <Folder Include="Repository\" />
+    <ProjectReference Include="..\Ogle.Repository.Sql\Ogle.Repository.Sql.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />

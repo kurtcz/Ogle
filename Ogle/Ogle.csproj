@@ -14,36 +14,4 @@
 
 
 
-  <ItemGroup>
-    <None Remove="Attributes\" />
-    <None Remove="Model\" />
-    <None Remove="Extensions\" />
-    <None Remove="Configuration\" />
-    <None Remove="Converters\" />
-    <None Remove="Repository\" />
-    <None Remove="ViewModel\" />
-    <None Remove="Service\" />
-    <None Remove="Controllers\" />
-    <None Remove="Pages\" />
-    <None Remove="Pages\Shared\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Attributes\" />
-    <Folder Include="Model\" />
-    <Folder Include="Extensions\" />
-    <Folder Include="Configuration\" />
-    <Folder Include="Converters\" />
-    <Folder Include="Repository\" />
-    <Folder Include="ViewModel\" />
-    <Folder Include="Service\" />
-    <Folder Include="Controllers\" />
-    <Folder Include="wwwroot\" />
-    <Folder Include="wwwroot\js\" />
-    <Folder Include="Pages\" />
-    <Folder Include="Pages\Shared\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Remove="wwwroot\" />
-    <Content Remove="wwwroot\js\" />
-  </ItemGroup>
 </Project>

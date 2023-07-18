@@ -1,36 +1,48 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Options;
 using Ogle;
-using Ogle.Repository.SQLite;
+using Ogle.Repository.Sql;
 using System.Data;
-using System.Data.SQLite;
 using System.Reflection;
 using System.Text;
 
-namespace Ogle.Repository.SQLite
+namespace Ogle.Repository.Sql
 {
-    public class OgleSQLiteRepository<TMetrics> : ILogMetricsRepository<TMetrics>
+    public abstract class OgleSqlRepository<TDbConnection, TMetrics> : ILogMetricsRepository<TMetrics>
+        where TDbConnection : IDbConnection, new()
     {
-        private IOptionsMonitor<OgleSQLiteRepositoryOptions> _settings;
+        protected IOptionsMonitor<OgleSqlRepositoryOptions> Settings { get; }
 
-        static OgleSQLiteRepository()
+        public OgleSqlRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings)
         {
-            SqlMapper.AddTypeHandler(typeof(Guid), new GuidTypeHandler());
-            SqlMapper.AddTypeHandler(typeof(TimeSpan), new TimeSpanTypeHandler());
-        }
-
-        public OgleSQLiteRepository(IOptionsMonitor<OgleSQLiteRepositoryOptions> settings)
-        {
-            _settings = settings;
+            Settings = settings;
         }
 
         #region ILogMetricsRepository methods
 
-        public async Task<bool> HasMetrics(DateTime from, DateTime to)
+        public virtual async Task CreateTableIfNeeded()
         {
-            using (var connection = new SQLiteConnection(_settings.CurrentValue.ConnectionString))
+            if (!Settings.CurrentValue.AutoCreateTable)
             {
-                connection.Open();
+                return;
+            }
+
+            using (var connection = new TDbConnection())
+            {
+                connection.ConnectionString = Settings.CurrentValue.ConnectionString;
+
+                var sql = BuildCreateTableCommand();
+                var result = await connection.ExecuteAsync(sql);
+            }
+        }
+
+        public virtual async Task<bool> HasMetrics(DateTime from, DateTime to)
+        {
+            using (var connection = new TDbConnection())
+            {
+                connection.ConnectionString = Settings.CurrentValue.ConnectionString;
+
+                await CreateTableIfNeeded();
 
                 var sql = BuildCountCommand();
                 var count = (long)await connection.ExecuteScalarAsync(sql, new { from, to });
@@ -39,10 +51,14 @@ namespace Ogle.Repository.SQLite
             }
         }
 
-        public async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to)
+        public virtual async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to)
         {
-            using(var connection = new SQLiteConnection(_settings.CurrentValue.ConnectionString))
+            using(var connection = new TDbConnection())
             {
+                connection.ConnectionString = Settings.CurrentValue.ConnectionString;
+
+                await CreateTableIfNeeded();
+
                 var sql = BuildSelectCommand();
                 var result = await connection.QueryAsync<TMetrics>(sql, new { from, to });
 
@@ -50,11 +66,13 @@ namespace Ogle.Repository.SQLite
             }
         }
 
-        public async Task<bool> DeleteMetrics(DateTime from, DateTime to)
+        public virtual async Task<bool> DeleteMetrics(DateTime from, DateTime to)
         {
-            using (var connection = new SQLiteConnection(_settings.CurrentValue.ConnectionString))
+            using (var connection = new TDbConnection())
             {
-                connection.Open();
+                connection.ConnectionString = Settings.CurrentValue.ConnectionString;
+
+                await CreateTableIfNeeded();
 
                 var sql = BuildDeleteCommand();
                 var deleted = await connection.ExecuteAsync(sql, new { from, to });
@@ -63,9 +81,9 @@ namespace Ogle.Repository.SQLite
             }
         }
 
-        public async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics)
+        public virtual async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics)
         {
-            var dt = new DataTable(_settings.CurrentValue.TableName);
+            var dt = new DataTable(Settings.CurrentValue.TableName);
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite); 
 
             foreach(var prop in props)
@@ -75,10 +93,12 @@ namespace Ogle.Repository.SQLite
 
             var rowsInserted = 0L;
 
-            using (var connection = new SQLiteConnection(_settings.CurrentValue.ConnectionString))
+            using (var connection = new TDbConnection())
             {
-                connection.Open();
-                
+                connection.ConnectionString = Settings.CurrentValue.ConnectionString;
+
+                await CreateTableIfNeeded();
+
                 var sql = BuildInsertCommand();
 
                 foreach (var row in metrics)
@@ -92,6 +112,8 @@ namespace Ogle.Repository.SQLite
         }
 
         #endregion
+
+        protected abstract string BuildCreateTableCommand();
 
         #region Private methods
 
@@ -111,14 +133,14 @@ namespace Ogle.Repository.SQLite
                 sql.Append(prop.Name);
                 i++;
             }
-            sql.Append($" FROM {_settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to");
+            sql.Append($" FROM {Settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to");
 
             return sql.ToString();
         }
 
         private string BuildInsertCommand()
         {
-            var sql = new StringBuilder($"INSERT INTO {_settings.CurrentValue.TableName} (");
+            var sql = new StringBuilder($"INSERT INTO {Settings.CurrentValue.TableName} (");
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite).ToArray();
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
 
@@ -153,7 +175,7 @@ namespace Ogle.Repository.SQLite
         {
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
-            var sql = $"DELETE FROM {_settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
+            var sql = $"DELETE FROM {Settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
 
             return sql;
         }
@@ -162,7 +184,7 @@ namespace Ogle.Repository.SQLite
         {
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
-            var sql = $"SELECT COUNT(*) FROM {_settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
+            var sql = $"SELECT COUNT(*) FROM {Settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
 
             return sql;
         }

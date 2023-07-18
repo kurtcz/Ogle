@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using Dapper;
 
-namespace Ogle.Repository.SQLite
+namespace Ogle.Repository.Sql
 {
     public class TimeSpanTypeHandler : SqlMapper.TypeHandler<TimeSpan>
     {

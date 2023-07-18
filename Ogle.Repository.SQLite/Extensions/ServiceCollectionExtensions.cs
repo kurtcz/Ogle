@@ -1,31 +1,32 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Ogle.Repository.SQLite;
+using Ogle.Repository.Sql;
+using Ogle.Repository.Sqlite;
 
-namespace Ogle.Repository.SQLite
+namespace Ogle.Repository.Sqlite
 {
 	public static class ServiceCollectionExtensions
 	{
-		private static IServiceCollection AddOgleSQLiteRepository<TMetrics>(this IServiceCollection services)
+		private static IServiceCollection AddOgleSqliteRepository<TMetrics>(this IServiceCollection services)
 		{
 			services.AddTransient<ILogMetricsRepository<TMetrics>, OgleSQLiteRepository<TMetrics>>();
 
 			return services;
 		}
 
-        public static IServiceCollection AddOgleSQLiteRepository<TMetrics>(this IServiceCollection services, IConfiguration configurationSection)
+        public static IServiceCollection AddOgleSqliteRepository<TMetrics>(this IServiceCollection services, IConfiguration configurationSection)
         {
-            services.AddOgleSQLiteRepository<TMetrics>();
-			services.Configure<OgleSQLiteRepositoryOptions>(configurationSection);
+            services.AddOgleSqliteRepository<TMetrics>();
+			services.Configure<OgleSqlRepositoryOptions>(configurationSection);
 
             return services;
         }
 
-        public static IServiceCollection AddOgleSQLiteRepository<TMetrics>(this IServiceCollection services, Action<OgleSQLiteRepositoryOptions> configurationAction)
+        public static IServiceCollection AddOgleSqliteRepository<TMetrics>(this IServiceCollection services, Action<OgleSqlRepositoryOptions> configurationAction)
         {
-            services.AddOgleSQLiteRepository<TMetrics>();
-            services.Configure<OgleSQLiteRepositoryOptions>(configurationAction);
+            services.AddOgleSqliteRepository<TMetrics>();
+            services.Configure<OgleSqlRepositoryOptions>(configurationAction);
 
             return services;
         }
