@@ -298,7 +298,15 @@ namespace Ogle
             {
 				date ??= DateTime.Today.AddDays(-1);
 
-                var endpoint = $"/ogle/GetMetrics?date={DateOnly.FromDateTime(date.Value)}";
+                var dateOnly = DateOnly.FromDateTime(date.Value);
+                var repo = ResolveLogMetricsRepository();
+                var logService = LogServiceFactory.CreateInstance(_settings, repo);
+
+                if (await logService.HasLogMetrics(dateOnly))
+                {
+                    await logService.DeleteLogMetrics(dateOnly);
+                }
+                var endpoint = $"/ogle/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}";
                 var responses = await CollateJsonResponsesFromServers(endpoint);
 
                 if (responses.All(i => i.Value.Error != null))
@@ -307,22 +315,17 @@ namespace Ogle
                 }
                 else
                 {
-                    try
-                    {
-                        var repo = ResolveLogMetricsRepository();
-                        var logService = LogServiceFactory.CreateInstance(_settings, repo);
-                        var metrics = responses.Where(i => i.Value.Error == null)
-                                               .SelectMany(i => i.Value.Payload)
-                                               .ToArray();
-                        var rowsSaved = logService.SaveLogMetrics(metrics).Result;
+					var rowsSaved = 0L;
+					var metrics = responses.Where(i => i.Value.Error == null)
+										   .SelectMany(i => i.Value.Payload)
+										   .ToArray();
 
-                        return Ok(rowsSaved);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, ex.Message);
-                        throw;
-                    }
+					if (Enumerable.Any(metrics))
+					{                        
+                        rowsSaved = await logService.SaveLogMetrics(dateOnly, ConvertToMetricsType(metrics));
+					}
+
+                    return Ok(rowsSaved);
                 }
             }
             catch (Exception ex)
@@ -358,6 +361,20 @@ namespace Ogle
 		private ILogMetricsRepository<T> ResolveLogMetricsRepositoryImpl<T>()
 		{
 			return _serviceProvider.GetService<ILogMetricsRepository<T>>();
+		}
+
+		private dynamic ConvertToMetricsType(object response)
+		{
+            var func = GetType().GetMethod("ConvertResponseToMetricsTypeImpl", BindingFlags.Instance | BindingFlags.NonPublic)
+                                .MakeGenericMethod(_settings.CurrentValue.MetricsType);
+            var converted = func.Invoke(this, new object[] { response });
+
+            return converted;
+        }
+
+        private IEnumerable<T> ConvertResponseToMetricsTypeImpl<T>(IEnumerable<object> response)
+        {
+			return response.Cast<T>();
 		}
 
 		private UriBuilder AmendUrlPortAndSchemeIfNeeded(string serverUrl, string path = null)
@@ -412,11 +429,14 @@ namespace Ogle
 				try
 				{
 					var response = await client.GetAsync(infoUrl);
+					var type = typeof(IEnumerable<>).MakeGenericType(new[] { _settings.CurrentValue.MetricsType });
 
-					responseContent = await response.Content.ReadAsStringAsync();
+                    responseContent = await response.Content.ReadAsStringAsync();
 					options.Converters.Add(new JsonTimeSpanConverter());
-					serverResponse = JsonSerializer.Deserialize<IEnumerable<object>>(responseContent, options);
-					responseWrapper = new NodeResponse<IEnumerable<object>>
+                    //serverResponse = ConvertResponseToMetricsType(JsonSerializer.Deserialize(responseContent, type, options));
+                    serverResponse = (IEnumerable<object>)JsonSerializer.Deserialize(responseContent, type, options);
+                    //serverResponse = JsonSerializer.Deserialize<IEnumerable<object>>(responseContent, options);
+                    responseWrapper = new NodeResponse<IEnumerable<object>>
 					{
 						Payload = serverResponse
 					};

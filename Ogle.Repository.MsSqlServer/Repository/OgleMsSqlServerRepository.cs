@@ -8,18 +8,31 @@ using System.Text;
 
 namespace Ogle.Repository.MsSqlServer
 {
-    public class OgleMsSqlServerRepository<TMetrics> : ILogMetricsRepository<TMetrics>
+    public class OgleSQLiteRepository<TMetrics> : ILogMetricsRepository<TMetrics>
     {
         private IOptionsMonitor<OgleMsSqlRepositoryOptions> _settings;
 
-        public OgleMsSqlServerRepository(IOptionsMonitor<OgleMsSqlRepositoryOptions> settings)
+        public OgleSQLiteRepository(IOptionsMonitor<OgleMsSqlRepositoryOptions> settings)
         {
             _settings = settings;
         }
 
+        #region ILogMetricsRepository methods
+
+        public async Task<bool> DeleteMetrics(DateTime from, DateTime to)
+        {
+            using (var connection = new SqlConnection(_settings.CurrentValue.ConnectionString))
+            {
+                var sql = BuildDeleteCommand();
+                var deleted = await connection.ExecuteAsync(sql, new { from, to });
+
+                return deleted > 0;
+            }
+        }
+
         public async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to)
         {
-            using(var connection = new SqlConnection())
+            using(var connection = new SqlConnection(_settings.CurrentValue.ConnectionString))
             {
                 var sql = BuildSelectCommand();
                 var result = await connection.QueryAsync<TMetrics>(sql, new { from, to });
@@ -28,10 +41,21 @@ namespace Ogle.Repository.MsSqlServer
             }
         }
 
+        public async Task<bool> HasMetrics(DateTime from, DateTime to)
+        {
+            using (var connection = new SqlConnection(_settings.CurrentValue.ConnectionString))
+            {
+                var sql = BuildCountCommand();
+                var count = await connection.ExecuteAsync(sql, new { from, to });
+
+                return count > 0;
+            }
+        }
+
         public async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics)
         {
             var dt = new DataTable(_settings.CurrentValue.TableName);
-            var props = typeof(TMetrics).GetProperties();
+            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
             foreach(var prop in props)
             {
@@ -72,10 +96,14 @@ namespace Ogle.Repository.MsSqlServer
             return rowsInserted;
         }
 
+        #endregion
+
+        #region Private methods
+
         private string BuildSelectCommand()
         {
             var sql = new StringBuilder("SELECT ");
-            var props = typeof(TMetrics).GetProperties();
+            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
 
             var i = 0;
@@ -92,6 +120,26 @@ namespace Ogle.Repository.MsSqlServer
 
             return sql.ToString();
         }
+
+        private string BuildDeleteCommand()
+        {
+            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
+            var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
+            var sql = $"DELETE FROM {_settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
+
+            return sql;
+        }
+
+        private string BuildCountCommand()
+        {
+            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
+            var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
+            var sql = $"SELECT COUNT(*) FROM {_settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
+
+            return sql;
+        }
+
+        #endregion
     }
 }
 

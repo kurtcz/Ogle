@@ -1,8 +1,9 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Ogle.Repository.SQLite;
 
-namespace Ogle.Repository.MsSqlServer
+namespace Ogle.Repository.SQLite
 {
 	public static class ServiceCollectionExtensions
 	{
@@ -16,15 +17,15 @@ namespace Ogle.Repository.MsSqlServer
         public static IServiceCollection AddOgleSQLiteRepository<TMetrics>(this IServiceCollection services, IConfiguration configurationSection)
         {
             services.AddOgleSQLiteRepository<TMetrics>();
-			services.Configure<OgleMsSqlRepositoryOptions>(configurationSection);
+			services.Configure<OgleSQLiteRepositoryOptions>(configurationSection);
 
             return services;
         }
 
-        public static IServiceCollection AddOgleSQLiteRepository<TMetrics>(this IServiceCollection services, Action<OgleMsSqlRepositoryOptions> configurationAction)
+        public static IServiceCollection AddOgleSQLiteRepository<TMetrics>(this IServiceCollection services, Action<OgleSQLiteRepositoryOptions> configurationAction)
         {
             services.AddOgleSQLiteRepository<TMetrics>();
-            services.Configure<OgleMsSqlRepositoryOptions>(configurationAction);
+            services.Configure<OgleSQLiteRepositoryOptions>(configurationAction);
 
             return services;
         }

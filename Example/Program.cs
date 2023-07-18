@@ -1,8 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using Dapper;
+using System.Collections.Generic;
+using System.Data.SQLite;
 using System.Linq;
 using Example.Model;
+using Microsoft.Extensions.Options;
 using Ogle;
-using Ogle.Repository.MsSqlServer;
+using Ogle.Repository.SQLite;
+using Microsoft.Extensions.DependencyInjection;
+using System.Text;
 
 namespace Example
 {
@@ -13,7 +18,7 @@ namespace Example
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-            //builder.Services.AddOgleMsSqlServerRepository<LogMetrics>(builder.Configuration.GetSection("Ogle:MsSqlRepositorySettings"));
+            builder.Services.AddOgleSQLiteRepository<LogMetrics>(builder.Configuration.GetSection("Ogle:RepositorySettings"));
             builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
             {
                 options.GroupKeyType = typeof(LogGroupKey);
@@ -44,6 +49,8 @@ namespace Example
 
             var app = builder.Build();
 
+            ConfigureDatabase(builder.Services);
+
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
@@ -63,6 +70,54 @@ namespace Example
             app.MapRazorPages();
 
             app.Run();
+        }
+
+        private static void ConfigureDatabase(IServiceCollection serviceCollection)
+        {
+            using (var serviceProvider = serviceCollection.BuildServiceProvider())
+            {
+                var settings = serviceProvider.GetRequiredService<IOptionsMonitor<OgleSQLiteRepositoryOptions>>();
+
+                using (var connection = new SQLiteConnection(settings.CurrentValue.ConnectionString))
+                {
+                    connection.Open();
+
+                    var sql = BuildCreateTableCommand(settings.CurrentValue.TableName);
+
+                    connection.Execute(sql);
+                }
+            }
+        }
+
+        private static string BuildCreateTableCommand(string tableName)
+        {
+            var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {tableName} (id INTEGER PRIMARY KEY");
+            var props = typeof(LogMetrics).GetProperties().Where(i => i.CanWrite);
+
+            foreach(var prop in props)
+            {
+                var dbType = GetSQLiteDbType(prop.GetType());
+
+                sb.Append($", {prop.Name} {dbType}");
+            }
+            sb.Append(");");
+
+            return sb.ToString();
+        }
+
+        private static string GetSQLiteDbType(Type type)
+        {
+            if(type == typeof(int) ||
+               type == typeof(uint) ||
+               type == typeof(short) ||
+               type == typeof(ushort) ||
+               type == typeof(long) ||
+               type == typeof(ulong))
+            {
+                return "INTEGER";
+            }
+
+            return "TEXT";
         }
     }
 }

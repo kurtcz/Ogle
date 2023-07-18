@@ -9,7 +9,9 @@ namespace Ogle
 	{
 		Task<IEnumerable<TRecord>> GetLogRecords(LogReaderOptions options);
         Task<IEnumerable<TMetrics>> GetLogMetrics(LogReaderOptions options, Func<IEnumerable<IGrouping<TGroupKey, TRecord>>, object> groupFunction);
-		Task<long> SaveLogMetrics(IEnumerable<TMetrics> metrics);
+		Task<bool> HasLogMetrics(DateOnly date);
+		Task<bool> DeleteLogMetrics(DateOnly date);
+		Task<long> SaveLogMetrics(DateOnly date, IEnumerable<TMetrics> metrics);
 		Task<string> GetLogContent(string searchId, DateOnly date);
 		IEnumerable<string> GetLogFilenames(DateOnly? date);
 		Stream GetFileStreamWithoutLocking(string filename);

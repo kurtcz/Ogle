@@ -168,9 +168,9 @@ namespace Ogle
             return result;
         }
 
-        public async Task<long> SaveLogMetrics(IEnumerable<TMetrics> metrics)
+        public async Task<long> SaveLogMetrics(DateOnly date, IEnumerable<TMetrics> metrics)
         {
-            return await _repo.SaveMetrics(metrics);
+            return await _repo.SaveMetrics(metrics.Cast<TMetrics>());
         }
 
         public async Task<string> GetLogContent(string searchTerm, DateOnly date)
@@ -389,6 +389,24 @@ namespace Ogle
             }
 
             return value;
+        }
+
+        public async Task<bool> HasLogMetrics(DateOnly date)
+        {
+            var from = new DateTime(date.Year, date.Month, date.Day);
+            var to = from.AddDays(1);
+            var b = await _repo.HasMetrics(from, to);
+
+            return b;
+        }
+
+        public async Task<bool> DeleteLogMetrics(DateOnly date)
+        {
+            var from = new DateTime(date.Year, date.Month, date.Day);
+            var to = from.AddDays(1);
+            var b = await _repo.DeleteMetrics(from, to);
+
+            return b;
         }
     }
 }

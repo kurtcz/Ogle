@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle", "Ogle\Ogle.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.MsSqlServer", "Ogle.Repository.MsSqlServer\Ogle.Repository.MsSqlServer.csproj", "{BEFBC3C7-C3F4-4767-9153-5FAB73FAA59B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.SQLite", "Ogle.Repository.SQLite\Ogle.Repository.SQLite.csproj", "{C8EC6D29-568A-47CC-9420-BCBA2324AAA4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{BEFBC3C7-C3F4-4767-9153-5FAB73FAA59B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BEFBC3C7-C3F4-4767-9153-5FAB73FAA59B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BEFBC3C7-C3F4-4767-9153-5FAB73FAA59B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8EC6D29-568A-47CC-9420-BCBA2324AAA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8EC6D29-568A-47CC-9420-BCBA2324AAA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8EC6D29-568A-47CC-9420-BCBA2324AAA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8EC6D29-568A-47CC-9420-BCBA2324AAA4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
