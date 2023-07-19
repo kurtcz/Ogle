@@ -10,8 +10,7 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <None Include="..\docs\README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
-
-
 
 </Project>

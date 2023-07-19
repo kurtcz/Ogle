@@ -94,7 +94,7 @@
             }
         }
         </select>
-        <input type="text" id="id" title="RequestId" placeholder="RequestId" style="width: 600px; max-width: 600px;" value="@(Model.Id)" />
+        <input type="text" id="id" title="RequestId or a search term" placeholder="RequestId or a search term" style="width: 600px; max-width: 600px;" value="@(Model.Id)" />
         <input type="submit" id="showButton" value="Fetch request logs" onclick="redirect(); return false;" />
         <input type="submit" id="browseButton" value="Browse application logs" onclick="getLogFileList(); return false;" />
         <input type="checkbox" id="wordWrap" onclick="toggleWordWrap();" /> Wrap text

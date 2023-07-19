@@ -32,7 +32,7 @@ namespace Ogle.Repository.Sqlite
 
             foreach (var prop in props)
             {
-                var dbType = GetDbType(prop.GetType());
+                var dbType = GetDbType(prop.PropertyType);
 
                 sb.Append($", {prop.Name} {dbType}");
             }

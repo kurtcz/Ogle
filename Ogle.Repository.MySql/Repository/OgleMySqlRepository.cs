@@ -1,46 +1,42 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
-using Ogle;
 using Ogle.Repository.Sql;
 using System.Data;
-using System.Data.Common;
-using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace Ogle.Repository.MySql
+{
+    public class OgleMySqlRepository<TMetrics> : OgleSqlRepository<MySqlConnection, TMetrics>
     {
-        public class OgleMySqlRepository<TMetrics> : OgleSqlRepository<MySqlConnection, TMetrics>
+        static OgleMySqlRepository()
         {
-            static OgleMySqlRepository()
+            SqlMapper.AddTypeHandler(typeof(Guid), new GuidTypeHandler());
+        }
+
+        public OgleMySqlRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings) : base(settings)
+        {
+        }
+
+        #region Overriden methods
+
+        protected override string BuildCreateTableCommand()
+        {
+            var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {Settings.CurrentValue.TableName} (_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
+
+            foreach (var prop in props)
             {
-                SqlMapper.AddTypeHandler(typeof(Guid), new GuidTypeHandler());
+                var dbType = GetDbType(prop.PropertyType);
+
+                sb.Append($", {prop.Name} {dbType}");
             }
+            sb.Append(");");
 
-            public OgleMySqlRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings) : base(settings)
-            {
-            }
+            return sb.ToString();
+        }
 
-            #region Overriden methods
-
-            protected override string BuildCreateTableCommand()
-            {
-                var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {Settings.CurrentValue.TableName} (_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
-                var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
-
-                foreach (var prop in props)
-                {
-                    var dbType = GetDbType(prop.GetType());
-
-                    sb.Append($", {prop.Name} {dbType}");
-                }
-                sb.Append(");");
-
-                return sb.ToString();
-            }
-
-        #endregion
+    #endregion
 
         #region Private methods
 
@@ -54,53 +50,53 @@ namespace Ogle.Repository.MySql
                 dbType = "BOOL";
             }
             else if (type == typeof(short) ||
-                     type == typeof(ushort) ||
-                     type == typeof(short?) ||
-                     type == typeof(ushort?))
+                        type == typeof(ushort) ||
+                        type == typeof(short?) ||
+                        type == typeof(ushort?))
             {
                 dbType = "SMALLINT";
             }
             else if (type == typeof(int) ||
-                     type == typeof(uint) ||
-                     type == typeof(int?) ||
-                     type == typeof(uint?))
+                        type == typeof(uint) ||
+                        type == typeof(int?) ||
+                        type == typeof(uint?))
             {
                 dbType = "INT";
             }
             else if (type == typeof(long) ||
-                     type == typeof(ulong) ||
-                     type == typeof(long?) ||
-                     type == typeof(ulong?))
+                        type == typeof(ulong) ||
+                        type == typeof(long?) ||
+                        type == typeof(ulong?))
             {
                 dbType = "BIGINT";
             }
             else if (type == typeof(decimal) ||
-                     type == typeof(decimal?))
+                        type == typeof(decimal?))
             {
                 dbType = "DECIMAL";
             }
             else if (type == typeof(float) ||
-                     type == typeof(float?))
+                        type == typeof(float?))
             {
                 dbType = "FLOAT";
             }
             else if (type == typeof(double) ||
-                     type == typeof(double?))
+                        type == typeof(double?))
             {
                 dbType = "DOUBLE";
             }
             else if (type == typeof(DateTime) ||
-                     type == typeof(DateTime?))
+                        type == typeof(DateTime?))
             {
                 dbType = "DATETIME";
             }
             else if (type == typeof(TimeSpan) ||
-                     type == typeof(TimeSpan?))
+                        type == typeof(TimeSpan?))
             {
                 dbType = "TIME";
             }
             else if (type == typeof(Guid) ||
-                     type == typeof(Guid?))
+                        type == typeof(Guid?))
             {
                 dbType = "CHAR(36)";
             }
@@ -122,6 +118,5 @@ namespace Ogle.Repository.MySql
         }
 
         #endregion
-    }
     }
 }

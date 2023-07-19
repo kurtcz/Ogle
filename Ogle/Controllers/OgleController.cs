@@ -61,12 +61,11 @@ namespace Ogle
 		{
             try
             {
-                date ??= DateTime.Today.AddDays(-1);
-
-				dynamic logService = LogServiceFactory.CreateInstance(_settings);
+                dynamic logService = LogServiceFactory.CreateInstance(_settings);
 				var sb = new StringBuilder("<pre>\n<b>Filename\t\t\t\tLast write time:\t\tFile size</b>\n");
-				
-				foreach(var path in logService.GetLogFilenames(DateOnly.FromDateTime(date.Value)))
+				DateOnly? dateOnly = date.HasValue ? DateOnly.FromDateTime(date.Value) : null;
+
+				foreach(var path in logService.GetLogFilenames(dateOnly))
 				{
 					var fi = new FileInfo(path);
 					var filename = Path.GetFileName(path);

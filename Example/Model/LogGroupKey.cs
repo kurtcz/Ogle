@@ -4,11 +4,11 @@ using Ogle;
 namespace Example.Model
 {
     [MandatoryLogPattern(@"^\[(\d{2}\:\d{2}\:\d{2})\ [A-Z]{3}\]\ ([^;]*);\ ReqId\=([^;]+);")]
-	public class LogGroupKey
-	{
+    public class LogGroupKey
+    {
         [Mandatory(2)]
         [DisplayName("Server")]
-		public string ServerName { get; set; }
+	    public string ServerName { get; set; }
 
         [LogPattern("User", @"User\ '([^']+)'")]
         [DisplayName("User")]

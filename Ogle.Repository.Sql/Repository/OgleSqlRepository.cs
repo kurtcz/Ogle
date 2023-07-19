@@ -29,7 +29,7 @@ namespace Ogle.Repository.Sql
                 await CreateTableIfNeeded();
 
                 var sql = BuildCountCommand();
-                var count = (long)await connection.ExecuteScalarAsync(sql, new { from, to });
+                var count = Convert.ToInt64(await connection.ExecuteScalarAsync(sql, new { from, to }));
 
                 return count > 0;
             }

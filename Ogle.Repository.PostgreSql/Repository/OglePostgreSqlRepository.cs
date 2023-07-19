@@ -1,15 +1,10 @@
-﻿using Dapper;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Npgsql;
-using Ogle;
 using Ogle.Repository.Sql;
 using System.Data;
-using System.Data.Common;
-using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
 
-namespace Ogle.Repository.MySql
+namespace Ogle.Repository.PostgreSql
 {
     public class OglePostgreSqlRepository<TMetrics> : OgleSqlRepository<NpgsqlConnection, TMetrics>
     {
@@ -26,7 +21,7 @@ namespace Ogle.Repository.MySql
 
             foreach (var prop in props)
             {
-                var dbType = GetDbType(prop.GetType());
+                var dbType = GetDbType(prop.PropertyType);
 
                 sb.Append($", {prop.Name} {dbType}");
             }

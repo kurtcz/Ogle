@@ -196,10 +196,6 @@ namespace Ogle
             {
                 throw new InvalidOperationException("MandatoryAttribute that has IsKey property set must also define a SearchPattern property");
             }
-            if(!keyAttribute.SearchPattern.Contains(@"{0}"))
-            {
-                throw new InvalidOperationException("SearchPattern property must contain a placeholder '{0}'");
-            }
 
             foreach(var logLine in ReadLogs(date))
             {
@@ -207,7 +203,7 @@ namespace Ogle
                 {
                     var match = mandatoryAttribute.Regex.Match(logLine);
 
-                    keys.Add(string.Format(keyAttribute.SearchPattern, match.Groups[keyAttribute.MatchGroup].Value));
+                    keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
                 }
                 if(keys.Any(key => logLine.Contains(key)))
                 {

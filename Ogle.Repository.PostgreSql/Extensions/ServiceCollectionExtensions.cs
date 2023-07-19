@@ -1,15 +1,14 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Ogle.Repository.Sql;
 
-namespace Ogle.Repository.MySql
+namespace Ogle.Repository.PostgreSql
 {
 	public static class ServiceCollectionExtensions
 	{
         private static IServiceCollection AddOgleMySqlRepository<TMetrics>(this IServiceCollection services)
         {
-            services.AddTransient<ILogMetricsRepository<TMetrics>, OgleMySqlRepository<TMetrics>>();
+            services.AddTransient<ILogMetricsRepository<TMetrics>, OglePostgreSqlRepository<TMetrics>>();
 
             return services;
         }

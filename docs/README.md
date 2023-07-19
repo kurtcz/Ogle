@@ -3,17 +3,25 @@ Use Ogle with your asp.net core appplication to view logs or analyze custom requ
 Ogle searches log files saved on your web server or runs a ditributed search on all of your application's web servers in parallel.
 The log files do not need to be uploaded to an external log parsing service. Each web application node can save its log files locally.
 
+Ogle is suitable for applications written in .NET 6
+
 ## Main features
-- View log details for a particular request id
-- Download an individual log file
-- Monitor your app's performance and health via log metrics page
+1. View log details for a particular request id or a search term
+
+![Sample search page screenshot](search.png)
+
+2. Browse and download log files on a given server
+
+![Sample search page screenshot](browse.png)
+
+3. Monitor your app's performance and health via log metrics page
 
 ![Sample metrics page screenshot](metrics.png)
 
 ## Getting Started
-- Add `Ogle` NuGet package to your ASP.NET Core application
+- Add `Ogle` NuGet package to your ASP.NET Core web project
 - Add Ogle section to your appsettings.json file
-```
+```json
     "Ogle": {
         "LogFolder": "logs",
         "LogFilePattern": "Sample-{0:yyyyMMdd}.log",
@@ -29,7 +37,7 @@ The log files do not need to be uploaded to an external log parsing service. Eac
   - LogRecord defines the properties that you are interested in harvesting. For example: Number of purchased items, total request time or number of requests in flight
   - LogMetrics defines the aggregate metrics that you want to view. For example: Total requests, Failed requests, Maximum requests in flight etc. These metrics are groupped by the LogGroupKey properties.
 - In your startup class register Ogle and define all three classes from above as well as the mapping between LogRecord and LogMetrics via a custom `GroupFunction`.
-```
+```C#
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
@@ -68,18 +76,30 @@ Parsing request metrics from the logs is a time consuming task - to shorten metr
 - Ogle.Repository.PostgreSql
 - Ogle.Repository.Sqlite
 
-Example repository registration:
+Example repository setting in appsettings.json:
+```json
+    "Ogle": {
+        "RepositorySettings": {
+            "ConnectionString": "Data Source=sqlite.db",
+            "TableName": "RequestMetrics",
+            "AutoCreateTable": true
+        }
+    }
 ```
+
+Example repository registration:
+```C#
 var builder = WebApplication.CreateBuilder(args);
 var configurationSection = builder.Configuration.GetSection("Ogle:RepositorySettings");
 
 builder.Services.AddOgleSqliteRepository<LogMetrics>(configurationSection);
 ```
+
 To save metrics for a given day to a file or database call
 
 `/ogle/SaveMetricsFromAllServers?date=yyyy-MM-dd`
 
-The endpoint will distribute the request to all web application nodes, the results will be collated and the endpoint will respond with a number of metrics saved. Consequtive calls for the same date will overwrite any possible previous data stored for the same date.
+The endpoint will distribute the request to all web application nodes, the metrics will be collated and saved. The endpoint will respond with a number of metrics saved. Consequtive calls for the same date will overwrite any potential previous data saved for the same date before.
 
 After data is saved, subsequent api calls for log metrics for that date will be read from the repository rather than being calculated on-the-fly from the logs.
 
