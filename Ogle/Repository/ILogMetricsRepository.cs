@@ -2,7 +2,6 @@
 {
 	public interface ILogMetricsRepository<TMetrics>
     {
-        Task CreateTableIfNeeded();
         Task<bool> DeleteMetrics(DateTime from, DateTime to);
         Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to);
 		Task<bool> HasMetrics(DateTime from, DateTime to);

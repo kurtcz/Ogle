@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.MySql", "Og
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.PostgreSql", "Ogle.Repository.PostgreSql\Ogle.Repository.PostgreSql.csproj", "{726306A7-93F9-4DF7-9755-27BA2571E960}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.File", "Ogle.Repository.File\Ogle.Repository.File.csproj", "{B74AD7CC-6BDB-4B4B-B69E-DA6E310C1964}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{726306A7-93F9-4DF7-9755-27BA2571E960}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{726306A7-93F9-4DF7-9755-27BA2571E960}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{726306A7-93F9-4DF7-9755-27BA2571E960}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B74AD7CC-6BDB-4B4B-B69E-DA6E310C1964}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B74AD7CC-6BDB-4B4B-B69E-DA6E310C1964}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B74AD7CC-6BDB-4B4B-B69E-DA6E310C1964}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B74AD7CC-6BDB-4B4B-B69E-DA6E310C1964}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

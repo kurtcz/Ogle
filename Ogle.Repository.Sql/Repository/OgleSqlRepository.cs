@@ -20,22 +20,6 @@ namespace Ogle.Repository.Sql
 
         #region ILogMetricsRepository methods
 
-        public virtual async Task CreateTableIfNeeded()
-        {
-            if (!Settings.CurrentValue.AutoCreateTable)
-            {
-                return;
-            }
-
-            using (var connection = new TDbConnection())
-            {
-                connection.ConnectionString = Settings.CurrentValue.ConnectionString;
-
-                var sql = BuildCreateTableCommand();
-                var result = await connection.ExecuteAsync(sql);
-            }
-        }
-
         public virtual async Task<bool> HasMetrics(DateTime from, DateTime to)
         {
             using (var connection = new TDbConnection())
@@ -112,6 +96,22 @@ namespace Ogle.Repository.Sql
         }
 
         #endregion
+
+        public virtual async Task CreateTableIfNeeded()
+        {
+            if (!Settings.CurrentValue.AutoCreateTable)
+            {
+                return;
+            }
+
+            using (var connection = new TDbConnection())
+            {
+                connection.ConnectionString = Settings.CurrentValue.ConnectionString;
+
+                var sql = BuildCreateTableCommand();
+                var result = await connection.ExecuteAsync(sql);
+            }
+        }
 
         protected abstract string BuildCreateTableCommand();
 

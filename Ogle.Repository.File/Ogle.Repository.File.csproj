@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Repository\" />
+    <None Remove="Extensions\" />
+    <None Remove="Configuration\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Repository\" />
+    <Folder Include="Extensions\" />
+    <Folder Include="Configuration\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Ogle\Ogle.csproj" />
+  </ItemGroup>
+</Project>

@@ -44,7 +44,7 @@ namespace Example
                 });
             });
             builder.Services.AddOgleSqliteRepository<LogMetrics>(builder.Configuration.GetSection("Ogle:RepositorySettings"));
-
+            
             builder.Services.AddControllers();
             builder.Services.AddRazorPages();
 

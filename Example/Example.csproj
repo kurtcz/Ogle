@@ -20,8 +20,5 @@
     <ProjectReference Include="..\Ogle.Repository.SQLite\Ogle.Repository.Sqlite.csproj">
       <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
     </ProjectReference>
-    <ProjectReference Include="..\Ogle\Ogle.csproj">
-      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
-    </ProjectReference>
   </ItemGroup>
 </Project>
