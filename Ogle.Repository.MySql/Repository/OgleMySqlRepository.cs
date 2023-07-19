@@ -1,80 +1,44 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Options;
+using MySql.Data.MySqlClient;
+using Ogle;
 using Ogle.Repository.Sql;
 using System.Data;
-using System.Data.SqlClient;
+using System.Data.Common;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
-namespace Ogle.Repository.MsSqlServer
-{
-    public class OgleMsSqlServerRepository<TMetrics> : OgleSqlRepository<SqlConnection, TMetrics>
+namespace Ogle.Repository.MySql
     {
-        public OgleMsSqlServerRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings) : base(settings)
+        public class OgleMySqlRepository<TMetrics> : OgleSqlRepository<MySqlConnection, TMetrics>
         {
-        }
-
-        #region Overriden methods
-
-        public async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics)
-        {
-            var dt = new DataTable(Settings.CurrentValue.TableName);
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
-
-            foreach(var prop in props)
+            static OgleMySqlRepository()
             {
-                dt.Columns.Add(new DataColumn(prop.Name));
+                SqlMapper.AddTypeHandler(typeof(Guid), new GuidTypeHandler());
             }
 
-            foreach(var row in metrics)
+            public OgleMySqlRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings) : base(settings)
             {
-                var values = new List<object>();
+            }
 
-                foreach(var prop in props)
+            #region Overriden methods
+
+            protected override string BuildCreateTableCommand()
+            {
+                var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {Settings.CurrentValue.TableName} (_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+                var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
+
+                foreach (var prop in props)
                 {
-                    values.Add(prop.GetValue(row));
+                    var dbType = GetDbType(prop.GetType());
+
+                    sb.Append($", {prop.Name} {dbType}");
                 }
-                dt.Rows.Add(values.ToArray());
+                sb.Append(");");
+
+                return sb.ToString();
             }
-
-            var rowsInserted = 0L;
-
-            using (var connection = new SqlConnection(Settings.CurrentValue.ConnectionString))
-            {
-                using (var bulk = new SqlBulkCopy(connection))
-                {
-                    bulk.DestinationTableName = Settings.CurrentValue.TableName;
-                    bulk.NotifyAfter = dt.Rows.Count;
-                    bulk.SqlRowsCopied += (s, e) => rowsInserted += e.RowsCopied;
-
-                    foreach(DataColumn column in dt.Columns)
-                    {
-                        bulk.ColumnMappings.Add(column.ColumnName, column.ColumnName);
-                    }
-
-                    await connection.OpenAsync();
-                    await bulk.WriteToServerAsync(dt);
-                }
-            }
-
-            return rowsInserted;
-        }
-
-        protected override string BuildCreateTableCommand()
-        {
-            var sb = new StringBuilder($"IF OBJECT_ID(N'{Settings.CurrentValue.TableName}') IS NULL CREATE TABLE {Settings.CurrentValue.TableName} (_id INT IDENTITY PRIMARY KEY");
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
-
-            foreach (var prop in props)
-            {
-                var dbType = GetDbType(prop.GetType());
-
-                sb.Append($", {prop.Name} {dbType}");
-            }
-            sb.Append(")");
-
-            return sb.ToString();
-        }
 
         #endregion
 
@@ -87,7 +51,7 @@ namespace Ogle.Repository.MsSqlServer
             if (type == typeof(bool) ||
                 type == typeof(bool?))
             {
-                dbType = "BIT";
+                dbType = "BOOL";
             }
             else if (type == typeof(short) ||
                      type == typeof(ushort) ||
@@ -118,12 +82,12 @@ namespace Ogle.Repository.MsSqlServer
             else if (type == typeof(float) ||
                      type == typeof(float?))
             {
-                dbType = "REAL";
+                dbType = "FLOAT";
             }
             else if (type == typeof(double) ||
                      type == typeof(double?))
             {
-                dbType = "FLOAT";
+                dbType = "DOUBLE";
             }
             else if (type == typeof(DateTime) ||
                      type == typeof(DateTime?))
@@ -138,11 +102,11 @@ namespace Ogle.Repository.MsSqlServer
             else if (type == typeof(Guid) ||
                      type == typeof(Guid?))
             {
-                dbType = "UNIQUEIDENTIFIER";
+                dbType = "CHAR(36)";
             }
             else if (type == typeof(string))
             {
-                dbType = "VARCHAR(MAX)";
+                dbType = "VARCHAR(65535)";
             }
             else
             {
@@ -159,5 +123,5 @@ namespace Ogle.Repository.MsSqlServer
 
         #endregion
     }
+    }
 }
-

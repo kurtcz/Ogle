@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Ogle.Repository.Sql;
-using Ogle.Repository.Sqlite;
 
 namespace Ogle.Repository.Sqlite
 {
@@ -10,7 +9,7 @@ namespace Ogle.Repository.Sqlite
 	{
 		private static IServiceCollection AddOgleSqliteRepository<TMetrics>(this IServiceCollection services)
 		{
-			services.AddTransient<ILogMetricsRepository<TMetrics>, OgleSQLiteRepository<TMetrics>>();
+			services.AddTransient<ILogMetricsRepository<TMetrics>, OgleSqliteRepository<TMetrics>>();
 
 			return services;
 		}

@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Options;
 using Ogle;
 using Ogle.Repository.Sql;
-using Ogle.Repository.Sqlite;
 using System.Data;
 using System.Data.Common;
 using System.Data.SQLite;

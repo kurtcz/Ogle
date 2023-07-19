@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.Sqlite", "O
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.Sql", "Ogle.Repository.Sql\Ogle.Repository.Sql.csproj", "{960F3037-F2BF-4873-8EE2-07F5979F80F8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.MySql", "Ogle.Repository.MySql\Ogle.Repository.MySql.csproj", "{9242FF61-2D70-4856-82CF-FF3F5A4A3DFA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{960F3037-F2BF-4873-8EE2-07F5979F80F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{960F3037-F2BF-4873-8EE2-07F5979F80F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{960F3037-F2BF-4873-8EE2-07F5979F80F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9242FF61-2D70-4856-82CF-FF3F5A4A3DFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9242FF61-2D70-4856-82CF-FF3F5A4A3DFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9242FF61-2D70-4856-82CF-FF3F5A4A3DFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9242FF61-2D70-4856-82CF-FF3F5A4A3DFA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
