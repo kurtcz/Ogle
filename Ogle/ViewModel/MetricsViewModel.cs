@@ -1,4 +1,6 @@
-﻿namespace Ogle
+﻿using System;
+
+namespace Ogle
 {
 	internal class MetricsViewModel
 	{

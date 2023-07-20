@@ -1,4 +1,4 @@
-﻿namespace Ogle.Repository.Sql
+﻿namespace Ogle.Repository.Sql.Abstractions
 {
 	public class OgleSqlRepositoryOptions
 	{

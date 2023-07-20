@@ -1,4 +1,8 @@
-﻿namespace Ogle
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace Ogle
 {
 	public interface ILogMetricsRepository<TMetrics>
     {

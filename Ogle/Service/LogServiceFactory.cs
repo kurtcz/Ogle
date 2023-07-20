@@ -1,4 +1,4 @@
-﻿using System.Runtime;
+﻿using System;
 using Microsoft.Extensions.Options;
 
 namespace Ogle

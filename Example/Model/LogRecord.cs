@@ -1,4 +1,5 @@
-﻿using Ogle;
+﻿using System;
+using Ogle;
 
 namespace Example.Model
 {

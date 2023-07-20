@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.Options;
 using Npgsql;
-using Ogle.Repository.Sql;
+using Ogle.Repository.Sql.Abstractions;
+using System;
 using System.Data;
+using System.Linq;
 using System.Text;
 
 namespace Ogle.Repository.PostgreSql

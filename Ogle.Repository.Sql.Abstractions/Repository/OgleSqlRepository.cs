@@ -1,12 +1,14 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Options;
-using Ogle;
-using Ogle.Repository.Sql;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
-namespace Ogle.Repository.Sql
+namespace Ogle.Repository.Sql.Abstractions
 {
     public abstract class OgleSqlRepository<TDbConnection, TMetrics> : ILogMetricsRepository<TMetrics>
         where TDbConnection : IDbConnection, new()

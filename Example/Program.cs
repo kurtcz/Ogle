@@ -1,13 +1,11 @@
-﻿using Dapper;
-using System.Collections.Generic;
-using System.Data.SQLite;
+﻿using System;
 using System.Linq;
 using Example.Model;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Ogle;
 using Ogle.Repository.Sqlite;
-using Microsoft.Extensions.DependencyInjection;
-using System.Text;
 
 namespace Example
 {

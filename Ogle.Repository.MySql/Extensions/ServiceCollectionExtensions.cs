@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Ogle.Repository.Sql;
+using Ogle.Repository.Sql.Abstractions;
 
 namespace Ogle.Repository.MySql
 {

@@ -1,8 +1,10 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
-using Ogle.Repository.Sql;
+using Ogle.Repository.Sql.Abstractions;
+using System;
 using System.Data;
+using System.Linq;
 using System.Text;
 
 namespace Ogle.Repository.MySql

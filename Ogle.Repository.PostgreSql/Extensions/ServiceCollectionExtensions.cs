@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Ogle.Repository.Sql;
+using Ogle.Repository.Sql.Abstractions;
 
 namespace Ogle.Repository.PostgreSql
 {

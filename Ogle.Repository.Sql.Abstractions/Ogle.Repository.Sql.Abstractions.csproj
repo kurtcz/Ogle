@@ -5,22 +5,20 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageId>Ogle.Repository.MySql</PackageId>
+    <PackageId>Ogle.Repository.Sql.Abstractions</PackageId>
     <Version>1.0.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>    
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.0.143" />
-    <PackageReference Include="MySql.Data" Version="8.1.0" />
+    <ProjectReference Include="..\Ogle\Ogle.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Ogle.Repository.Sql.Abstractions\Ogle.Repository.Sql.Abstractions.csproj" />
+    <PackageReference Include="Dapper" Version="2.0.143" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\docs\README.md" Pack="true" PackagePath="\" />
     <None Include="..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
-
 </Project>

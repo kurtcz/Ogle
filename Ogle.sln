@@ -11,7 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.MsSqlServer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.Sqlite", "Ogle.Repository.SQLite\Ogle.Repository.Sqlite.csproj", "{C8EC6D29-568A-47CC-9420-BCBA2324AAA4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.Sql", "Ogle.Repository.Sql\Ogle.Repository.Sql.csproj", "{960F3037-F2BF-4873-8EE2-07F5979F80F8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.Sql.Abstractions", "Ogle.Repository.Sql.Abstractions\Ogle.Repository.Sql.Abstractions.csproj", "{960F3037-F2BF-4873-8EE2-07F5979F80F8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ogle.Repository.MySql", "Ogle.Repository.MySql\Ogle.Repository.MySql.csproj", "{9242FF61-2D70-4856-82CF-FF3F5A4A3DFA}"
 EndProject
