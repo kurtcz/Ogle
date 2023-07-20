@@ -2,7 +2,7 @@
 using System.Data;
 using Dapper;
 
-namespace Ogle.Repository.Sql
+namespace Ogle.Repository.Sql.Abstractions
 {
 	public class GuidTypeHandler : SqlMapper.TypeHandler<Guid>
 	{

@@ -2,20 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Ogle.Repository.Sql.Abstractions</PackageId>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Configuration\" />
-    <None Remove="Converters\" />
-    <None Remove="Repository\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Configuration\" />
-    <Folder Include="Converters\" />
-    <Folder Include="Repository\" />
-  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Ogle\Ogle.csproj" />
   </ItemGroup>

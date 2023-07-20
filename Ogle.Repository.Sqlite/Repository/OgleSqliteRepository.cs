@@ -1,13 +1,11 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Options;
-using Ogle;
-using Ogle.Repository.Sql;
+using Ogle.Repository.Sql.Abstractions;
+using System;
 using System.Data;
-using System.Data.Common;
 using System.Data.SQLite;
-using System.Reflection;
+using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace Ogle.Repository.Sqlite
 {

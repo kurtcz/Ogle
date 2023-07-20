@@ -3,14 +3,17 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Ogle</PackageId>
+    <Version>1.0.0</Version>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <None Include="..\docs\README.md" Pack="true" PackagePath="\"/>
+    <None Include="..\docs\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

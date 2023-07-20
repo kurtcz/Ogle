@@ -1,10 +1,12 @@
-﻿using Dapper;
-using Microsoft.Extensions.Options;
-using Ogle.Repository.Sql;
+﻿using Microsoft.Extensions.Options;
+using Ogle.Repository.Sql.Abstractions;
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-using System.Reflection;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Ogle.Repository.MsSqlServer
 {
