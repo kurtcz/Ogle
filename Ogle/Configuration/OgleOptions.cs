@@ -8,9 +8,10 @@ namespace Ogle
 	{
 		public string LogFolder { get; set; }
 		public string LogFilePattern { get; set; }
+		public string AllowedSearchPattern { get; set; }
 		public int HttpPort { get; set; }
         public int HttpsPort { get; set; }
-		public string[] ServerUrls { get; set; }
+		public string[] Hostnames { get; set; }
 		public string[] DatasetColors { get; set; }
 		public int DefaultMinutesPerBucket { get; set; }
         public int DefaultNumberOfBuckets { get; set; }

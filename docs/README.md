@@ -8,15 +8,15 @@ Ogle is suitable for applications written in .NET 6
 ## Main features
 1. View log details for a particular request id or a search term
 
-![Sample search page screenshot](search.png)
+![Sample search page screenshot](https://cdn.jsdelivr.net/gh/kurtcz/ogle/docs/search.png)
 
 2. Browse and download log files on a given server
 
-![Sample search page screenshot](browse.png)
+![Sample browse page screenshot](https://cdn.jsdelivr.net/gh/kurtcz/ogle/docs/browse.png)
 
 3. Monitor your app's performance and health via log metrics page
 
-![Sample metrics page screenshot](metrics.png)
+![Sample metrics page screenshot](https://cdn.jsdelivr.net/gh/kurtcz/ogle/docs/metrics.png)
 
 ## Getting Started
 - Add `Ogle` NuGet package to your ASP.NET Core web project
@@ -25,10 +25,11 @@ Ogle is suitable for applications written in .NET 6
     "Ogle": {
         "LogFolder": "logs",
         "LogFilePattern": "Sample-{0:yyyyMMdd}.log",
+        "AllowedSearchPattern": "\\S{5,}",
         "HttpPort": 80,
         "HttpsPort": 443,
-        "ServerUrls": [
-            "http://localhost:80"
+        "Hostnames": [
+            "localhost"
         ]
     }
 ```

@@ -18,6 +18,7 @@ namespace Ogle
 						options.DrillDownMinutesPerBucket = 1;
 						options.DrillDownNumberOfBuckets = 60;
 						options.LogParserTimeout = TimeSpan.FromSeconds(300);
+						options.AllowedSearchPattern = @"\S+";
 						options.DatasetColors = new[]
 						{
 							"#cf2233",

@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 
 namespace Ogle
 {
@@ -46,10 +47,10 @@ namespace Ogle
 					Id = id,
 					Date = DateOnly.FromDateTime(date.Value),
 					HostName = hostName,
-					ServerSelectList = _settings.CurrentValue.ServerUrls.Select(i => new SelectListItem
+					ServerSelectList = _settings.CurrentValue.Hostnames.Select(i => new SelectListItem
 					{
-						Text = new Uri(i).Host,
-						Value = AmendUrlPortAndSchemeIfNeeded(i).ToString()
+						Text = i,
+						Value = GetHostnameUrl(Request.Scheme, i).ToString()
 					}).ToList()
                 };
 
@@ -97,16 +98,22 @@ namespace Ogle
             {
                 date ??= DateTime.Today.AddDays(-1);
 
-                dynamic logService = LogServiceFactory.CreateInstance(_settings);
-				string result;
-
-				if(string.IsNullOrEmpty(id))
+				var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
+                string result;
+				
+				if(id == null)
 				{
-					result = "Please specify a record id";
+					result = "Please specify a request id or a unique search term";
 				}
+				else if(!searchPatternMatch.Success)
+				{
+                    result = $"Search term has to match {_settings.CurrentValue.AllowedSearchPattern} regular expresion pattern";
+                }
 				else
 				{
-					result = await (Task<string>)logService.GetLogContent(id, DateOnly.FromDateTime(date.Value));
+                    dynamic logService = LogServiceFactory.CreateInstance(_settings);
+
+                    result = await (Task<string>)logService.GetLogContent(id, DateOnly.FromDateTime(date.Value));
 				}
 
 				return Content(result);
@@ -210,7 +217,7 @@ namespace Ogle
 
                 return View(new MetricsViewModel
 				{
-					ServerUrls = _settings.CurrentValue.ServerUrls.Select(i => AmendUrlPortAndSchemeIfNeeded(i).ToString()).ToArray(),
+					ServerUrls = _settings.CurrentValue.Hostnames.Select(i => GetHostnameUrl(Request.Scheme, i).ToString()).ToArray(),
 					Date = options.Date.Value,
 					HourFrom = options.HourFrom,
 					MinuteFrom = options.MinuteFrom,
@@ -382,16 +389,13 @@ namespace Ogle
 			return response.Cast<T>();
 		}
 
-		private UriBuilder AmendUrlPortAndSchemeIfNeeded(string serverUrl, string path = null)
+		private UriBuilder GetHostnameUrl(string scheme, string hostname, string path = null)
 		{
-			var infoUrlBuilder = new UriBuilder(serverUrl);
+			var infoUrlBuilder = new UriBuilder(scheme, hostname);
+			var httpsPort = _settings.CurrentValue.HttpsPort > 0 ? _settings.CurrentValue.HttpsPort : -1;
+            var httpPort = _settings.CurrentValue.HttpPort > 0 ? _settings.CurrentValue.HttpPort : -1;
 
-			//support redirecting to https addresses which - apart from using a different protocol - also run on a different port
-			if (Request.Scheme == "https")
-			{
-				infoUrlBuilder.Scheme = "https";
-				infoUrlBuilder.Port = _settings.CurrentValue.HttpsPort;
-			}
+            infoUrlBuilder.Port = scheme == "https" ? httpsPort : httpPort;
 
 			if (!string.IsNullOrEmpty(path))
 			{
@@ -411,13 +415,13 @@ namespace Ogle
 			return infoUrlBuilder;
 		}
 
-        private async Task<Dictionary<string, NodeResponse<IEnumerable<object>>>> CollateJsonResponsesFromServers(string url)
+        private async Task<Dictionary<string, NodeResponse<IEnumerable<object>>>> CollateJsonResponsesFromServers(string urlPath)
 		{
-			var serverUrls = _settings.CurrentValue.ServerUrls;
+			var hostnames = _settings.CurrentValue.Hostnames;
 			var result = new ConcurrentBag<(string, NodeResponse<IEnumerable<object>>)>();
-			var tasks = serverUrls.Select(async serverUrl =>
+			var tasks = hostnames.Select(async hostname =>
 			{
-				UriBuilder infoUrlBuilder = AmendUrlPortAndSchemeIfNeeded(serverUrl, url);
+				UriBuilder infoUrlBuilder = GetHostnameUrl(Request.Scheme, hostname, urlPath);
 				var actualServerUrl = $"{infoUrlBuilder.Scheme}://{infoUrlBuilder.Host}:{infoUrlBuilder.Port}";
 				var infoUrl = infoUrlBuilder.ToString();
 
@@ -455,7 +459,7 @@ namespace Ogle
                         Error = $"Endpoint {actualServerUrl} returned an error {hre?.StatusCode?.ToString() ?? string.Empty}: {ex.Message}"
                     };
                     _logger.LogError(ex, "{url} endpoint at {actualServerUrl} returned an error.\n{exceptionMessage}",
-									 url, actualServerUrl, ex.Message);
+									 urlPath, actualServerUrl, ex.Message);
 				}
 
 				result.Add((actualServerUrl, responseWrapper));

@@ -7,9 +7,9 @@
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Ogle</PackageId>
-    <Version>1.0.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <Description>Adds endpoints for searching logs and viewing application metrics to your asp.net core application</Description>
   </PropertyGroup>
 
   <ItemGroup>
