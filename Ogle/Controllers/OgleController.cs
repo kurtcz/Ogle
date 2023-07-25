@@ -96,7 +96,7 @@ namespace Ogle
 		{
             try
             {
-                date ??= DateTime.Today.AddDays(-1);
+				date ??= DateTime.Today.AddDays(-1);
 
 				var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
                 string result;
@@ -114,6 +114,11 @@ namespace Ogle
                     dynamic logService = LogServiceFactory.CreateInstance(_settings);
 
                     result = await (Task<string>)logService.GetLogContent(id, DateOnly.FromDateTime(date.Value));
+
+					if (string.IsNullOrEmpty(result))
+					{
+						result = $"Request id or search term not found in logs for {date:yyyy-MM-dd}";
+					}
 				}
 
 				return Content(result);

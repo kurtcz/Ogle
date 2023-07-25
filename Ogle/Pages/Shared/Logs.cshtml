@@ -153,15 +153,22 @@
 
             window.location.href = url;
         }
+        else {
+            $('#logsContainer').html('No request id or search term specified');
+            return;
+        }
     }
 
     function getLogs() {
         $('#logsContainer').css('overflow', 'inherit');
         if ($('#id').val().trim() == '') {
-            $('#logsContainer').html('No request id specified');
+            $('#logsContainer').html('No request id or search term specified');
             return;
         }
-
+        else if ($('#date').val() == '') {
+            $('#logsContainer').html('No date specified');
+            return;
+        }
         $('#logsContainer').html('');
         $('#loader').show();
 
@@ -173,7 +180,7 @@
             {
                 var serverName = serverUrl.Text;
 
-                @Html.Raw($"\t\t\tif (!hostname || hostname == '{serverName}')\n");
+                @Html.Raw($"\t\t\tif (!hostname || hostname == '' || hostname == '{serverName}')\n");
                 @Html.Raw("\t\t\t{\n");
                 @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}ogle/GetLogs?date=' + $(\"#date\").val() + '&id=' + $(\"#id\").val() + '&rand=' + getRandomInt(1000)));\n");
                 @Html.Raw("\t\t\t}\n");
@@ -187,7 +194,7 @@
     function getLogFileList() {
         $('#logsContainer').css('overflow', 'inherit');
         if ($('#hostname').val().trim() == '') {
-            $('#logsContainer').html('No request id specified');
+            $('#logsContainer').html('No machine specified');
             return;
         }
 
