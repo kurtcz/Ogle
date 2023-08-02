@@ -23,37 +23,44 @@ Ogle is suitable for applications written in .NET 6
 - Add Ogle section to your appsettings.json file
 ```json
     "Ogle": {
-        "LogFolder": "logs",
-        "LogFilePattern": "Sample-{0:yyyyMMdd}.log",
-        "AllowedSearchPattern": "\\S{5,}",
-        "HttpPort": 80,
-        "HttpsPort": 443,
+        "LogFolder": "logs",    //set path to the log folder
+        "LogFilePattern": "Sample-{0:yyyyMMdd}.log",    //set log file name pattern
+        "AllowedSearchPattern": "\\S{5,}",  //regex pattern used for validation of the search term
+        "HttpPort": 8080,   //set application HTTP port (optional, default=80)
+        "HttpsPort": 4430,  //set application HTTPS port (optional, default=443)
         "Hostnames": [
-            "localhost"
+            "localhost"     /add all the hosts where your application is running
         ]
     }
 ```
-- Define `LogGroupKey`, `LogRecord` and `LogMetrics` classes (refer to the [Example](../Example/) project for details)
-  - LogGroupKey defines the properties to group your logs by. For example: Hostname, endpoint, username or time bucket.
-  - LogRecord defines the properties that you are interested in harvesting. For example: Number of purchased items, total request time or number of requests in flight
+- Define `LogGroupKey`, `LogRecord` and `LogMetrics` classes (refer to the [Example](http:/https://github.com/kurtcz/Ogle/tree/develop/Example) project for details)
+  - LogRecord defines the properties that you are interested in harvesting in each request. For example: Number of purchased items, total request time or number of requests in flight
+  - LogGroupKey defines the properties to group your log metrics by. For example: Hostname, endpoint, username or time bucket.
   - LogMetrics defines the aggregate metrics that you want to view. For example: Total requests, Failed requests, Maximum requests in flight etc. These metrics are groupped by the LogGroupKey properties.
+  - Both LogRecord and LogMetrics must inherit from LogGroupKey in order to contain its properties
 - In your startup class register Ogle and define all three classes from above as well as the mapping between LogRecord and LogMetrics via a custom `GroupFunction`.
 ```C#
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
 {
-    options.GroupKeyType = typeof(LogGroupKey);
+    //define type of your log record class
     options.RecordType = typeof(LogRecord);
+    //define type of your group key class
+    options.GroupKeyType = typeof(LogGroupKey);
+    //define type of your log metrics class
     options.MetricsType = typeof(LogMetrics);
+    //define mapping for log metrics
     options.GroupFunction = input => input.Select(i =>
         var g = (IGrouping<LogGroupKey,LogRecord>)i;
 
         return new LogMetrics
         {
+            //define mappings for keys to group by
             ServerName = g.Key.ServerName,
             Endpoint = g.Key.Endpoint,
             Timestamp = g.Key.Timestamp,
+            //define mappings for individual metrics
             TotalRequests = g.Count(),
             SuccessfulRequests = g.Count(j => j.Succeeded),
             MaxRequestsInFlight = g.Max(j => j.RequestsInFlight)
@@ -104,4 +111,4 @@ The endpoint will distribute the request to all web application nodes, the metri
 
 After data is saved, subsequent api calls for log metrics for that date will be read from the repository rather than being calculated on-the-fly from the logs.
 
-Refer to the [Example](../Example/) project for details
+Refer to the [Example](http:/https://github.com/kurtcz/Ogle/tree/develop/Example) project for details
