@@ -5,7 +5,7 @@ namespace Example.Model
 {
 	public class LogRecord : LogGroupKey
 	{
-		[Mandatory(3, isKey: true, @"ReqId=([^;]+);")]
+		[Mandatory(3, isKey: true)]
 		public string RequestId { get; set; }
 
 		[LogPattern("flight", @"(\d+)\ requests\ in\ flight")]

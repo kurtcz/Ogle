@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Ogle
 {
-	internal class LogsViewModel
+	public class LogsViewModel
 	{
 		public string Id { get; set; }
 		public string HostName { get; set; }

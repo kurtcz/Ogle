@@ -4,11 +4,11 @@ using Ogle;
 
 namespace Example.Model
 {
-	public class LogMetrics : LogGroupKey
-	{
+    public class LogMetrics : LogGroupKey
+    {
         [Total]
         [DisplayName("Total Requests")]
-		public int TotalRequests { get; set; }
+        public int TotalRequests { get; set; }
 
         [DisplayName("Successful Requests")]
         public int SuccessfulRequests { get; set; }

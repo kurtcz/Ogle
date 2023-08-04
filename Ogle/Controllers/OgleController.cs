@@ -323,7 +323,8 @@ namespace Ogle
                 {
                     await logService.DeleteLogMetrics(dateOnly);
                 }
-                var endpoint = $"/ogle/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}";
+				var numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets * _settings.CurrentValue.DrillDownNumberOfBuckets;
+                var endpoint = $"/ogle/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
                 var responses = await CollateJsonResponsesFromServers(endpoint);
 
                 if (responses.All(i => i.Value.Error != null))
@@ -474,15 +475,6 @@ namespace Ogle
 
 			return result.ToDictionary(k => k.Item1, v => v.Item2);
 		}
-
-        private object? SaveCollatedMetrics(dynamic responses)
-        {
-            var func = GetType().GetMethod("SaveCollatedMetricsImpl", BindingFlags.Instance | BindingFlags.NonPublic)
-                                .MakeGenericMethod(_settings.CurrentValue.MetricsType);
-            var result = func.Invoke(this, new[] { responses });
-
-            return result;
-        }
 
 		#endregion
 	}

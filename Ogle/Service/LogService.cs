@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Ogle
 {
 	internal class LogService<TGroupKey, TRecord, TMetrics> : ILogService<TGroupKey, TRecord, TMetrics>
-        where TGroupKey : new()
+        where TGroupKey : class, new()
         where TRecord : TGroupKey, new()
         where TMetrics : TGroupKey, new()
     {
@@ -66,6 +66,13 @@ namespace Ogle
 
                 var id = mandatoryMatch.Groups[keyAttribute.MatchGroup].Value;
 
+                //some events like application restarts do not have a request id
+                //therefore we need to generate one on the fly to be able to aggregate them
+                if(string.IsNullOrEmpty(id))
+                {
+                    id = Guid.NewGuid().ToString("D");
+                }
+
                 if (!dict.ContainsKey(id))
                 {
                     record = new TRecord();
@@ -74,7 +81,6 @@ namespace Ogle
 
                     foreach(var patternInfo in mandatoryPatterns.Where(i => i.Key.Name != keyProp.Name))
                     {
-                        //var typeCode = Type.GetTypeCode(patternInfo.Key.PropertyType);
                         var value = ParseValue(patternInfo.Key.PropertyType, mandatoryMatch.Groups[patternInfo.Value.MatchGroup].Value, options.Date.Value, patternInfo.Value.Format);
 
                         if (timeBucketProp.Name == patternInfo.Key.Name)
@@ -154,15 +160,16 @@ namespace Ogle
                                         options.MinuteFrom,
                                         0);
                 var to = from.AddMinutes(options.MinutesPerBucket.Value * options.NumberOfBuckets.Value);
+                var metrics = await _repo.GetMetrics(from, to);
 
-                result = await _repo.GetMetrics(from, to);
+                UpdateTimeBucket(ref metrics, options);
+                result = metrics;
             }
 
             if (!result.Any())
             {
-                var metrics = await GetLogRecords(options);
-                var dict = new Dictionary<TGroupKey, List<TRecord>>();
-                var groupped = metrics.GroupBy(i => (TGroupKey)i);
+                var records = await GetLogRecords(options);
+                var groupped = records.GroupBy(i => i as TGroupKey);
 
                 result = (IEnumerable<TMetrics>)groupFunction(groupped);
             }
@@ -193,11 +200,6 @@ namespace Ogle
                                              .Any(j => (j as MandatoryAttribute)?.IsKey ?? false));
             var keys = new HashSet<string>();
             var sb = new StringBuilder();
-
-            if (string.IsNullOrEmpty(keyAttribute.SearchPattern))
-            {
-                throw new InvalidOperationException("MandatoryAttribute that has IsKey property set must also define a SearchPattern property");
-            }
 
             foreach(var logLine in ReadLogs(date))
             {
@@ -265,6 +267,20 @@ namespace Ogle
             var dt = new DateTime(timestamp.Ticks - (timestamp.Ticks % bucket.Ticks));
 
             return dt;
+        }
+
+        private static void UpdateTimeBucket(ref IEnumerable<TMetrics> metrics, LogReaderOptions options)
+        {
+            var props = typeof(TMetrics).GetProperties();
+            var timebucketProp = props.Single(i => i.GetCustomAttributes(typeof(TimeBucketAttribute), false).Any());
+            
+            foreach(var item in metrics)
+            {
+                var time = (DateTime)timebucketProp.GetValue(item);
+                var bucket = DateTimeToBucket(time, options);
+
+                timebucketProp.SetValue(item, bucket);
+            }
         }
 
         private static object? GetDefaultValueForType(Type type)

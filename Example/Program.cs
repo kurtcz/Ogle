@@ -2,6 +2,7 @@
 using System.Linq;
 using Example.Model;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ogle;
@@ -14,6 +15,9 @@ namespace Example
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // Ensure that Ogle static web files are acessible (part 1)
+            builder.WebHost.UseStaticWebAssets();
 
             // Add services to the container.
             builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
@@ -42,7 +46,8 @@ namespace Example
                 });
             });
             builder.Services.AddOgleSqliteRepository<LogMetrics>(builder.Configuration.GetSection("Ogle:RepositorySettings"));
-            
+
+            // Ensure that Ogle controllers and razor pages are accessible
             builder.Services.AddControllers();
             builder.Services.AddRazorPages();
 
@@ -57,12 +62,13 @@ namespace Example
             }
 
             app.UseHttpsRedirection();
-            app.UseStaticFiles();
+            app.UseStaticFiles();   // Ensure that Ogle static web files are acessible (part 2)
 
             app.UseRouting();
 
             app.UseAuthorization();
 
+            // Ensure that Ogle controllers and razor pages routings are mapped
             app.MapControllers();
             app.MapRazorPages();
 

@@ -2,7 +2,7 @@
 
 namespace Ogle
 {
-	internal class MetricsViewModel
+	public class MetricsViewModel
 	{
 		public string[] KeyProperties { get; set; }
         public string[] KeyPropertyDisplayNames { get; set; }

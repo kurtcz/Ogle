@@ -1,3 +1,10 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="ogle-inverted.svg" />
+  <source media="(prefers-color-scheme: light)" srcset="ogle.svg" />
+  <img src="ogle.svg" width="144" height="70"/>
+</picture>
+<!-- <img src="https://cdn.jsdelivr.net/gh/kurtcz/ogle/docs/ogle.svg" width="144" height="70"/> -->
+
 # Ogle
 Use Ogle with your asp.net core appplication to view logs or analyze custom request metrics to profile your application's health and performance.
 Ogle searches log files saved on your web server or runs a ditributed search on all of your application's web servers in parallel.
@@ -21,27 +28,29 @@ Ogle is suitable for applications written in .NET 6
 ## Getting Started
 - Add `Ogle` NuGet package to your ASP.NET Core web project
 - Add Ogle section to your appsettings.json file
-```json
-    "Ogle": {
-        "LogFolder": "logs",    //set path to the log folder
-        "LogFilePattern": "Sample-{0:yyyyMMdd}.log",    //set log file name pattern
-        "AllowedSearchPattern": "\\S{5,}",  //regex pattern used for validation of the search term
-        "HttpPort": 8080,   //set application HTTP port (optional, default=80)
-        "HttpsPort": 4430,  //set application HTTPS port (optional, default=443)
-        "Hostnames": [
-            "localhost"     /add all the hosts where your application is running
-        ]
-    }
+```jsonc
+"Ogle": {
+    "LogFolder": "logs",    //set path to the log folder
+    "LogFilePattern": "Sample-{0:yyyyMMdd}.log",    //set log file name pattern
+    "AllowedSearchPattern": "\\S{5,}",  //regex pattern used for validation of the search term
+    "HttpPort": 8080,   //set application HTTP port (optional, default=80)
+    "HttpsPort": 4430,  //set application HTTPS port (optional, default=443)
+    "Hostnames": [
+        "localhost"     //add all the hosts where your application is running
+    ]
+}
 ```
 - Define `LogGroupKey`, `LogRecord` and `LogMetrics` classes (refer to the [Example](http:/https://github.com/kurtcz/Ogle/tree/develop/Example) project for details)
   - LogRecord defines the properties that you are interested in harvesting in each request. For example: Number of purchased items, total request time or number of requests in flight
   - LogGroupKey defines the properties to group your log metrics by. For example: Hostname, endpoint, username or time bucket.
   - LogMetrics defines the aggregate metrics that you want to view. For example: Total requests, Failed requests, Maximum requests in flight etc. These metrics are groupped by the LogGroupKey properties.
   - Both LogRecord and LogMetrics must inherit from LogGroupKey in order to contain its properties
+  - LogGroupKey must override GetHashCode and Equals methods to ensure groupping of LogRecords works as expected
 - In your startup class register Ogle and define all three classes from above as well as the mapping between LogRecord and LogMetrics via a custom `GroupFunction`.
 ```C#
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.UseStaticWebAssets();   //this will include static files bundled inside Ogle in non development environments
 builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
 {
     //define type of your log record class
@@ -50,7 +59,7 @@ builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
     options.GroupKeyType = typeof(LogGroupKey);
     //define type of your log metrics class
     options.MetricsType = typeof(LogMetrics);
-    //define mapping for log metrics
+    //define log records to log metrics mapping function
     options.GroupFunction = input => input.Select(i =>
         var g = (IGrouping<LogGroupKey,LogRecord>)i;
 

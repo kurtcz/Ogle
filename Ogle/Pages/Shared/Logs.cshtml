@@ -4,6 +4,21 @@
     ViewBag.Title = "Request Logs";
 }
 <style>
+    @@media (prefers-color-scheme: dark) {
+        body {
+            background-color: black;
+            color: white;
+        }
+    }
+
+    #logo {
+        float: right;
+        width: 112px;
+        height: auto;
+        margin-block: -5px;
+        filter: grayscale(100%);
+    }
+
     .container {
         max-width: initial !important;
         font-size: smaller;
@@ -41,9 +56,9 @@
         color: initial;
     }
 
-    select option[value=""] {
-        color: gray;
-    }
+        select option[value=""] {
+            color: gray;
+        }
 
     @@keyframes spin {
         0% {
@@ -73,26 +88,32 @@
     }
 </style>
 
-<h2>@(ViewBag.Title)</h2>
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="~/_content/Ogle/images/ogle.svg" />
+    <img id="logo" src="~/_content/Ogle/images/ogle.svg" />
+</picture>
+
+<h2>@(ViewBag.Title) </h2>
 
 <div>
     <form>
         <label for="hostname">Date:</label>
         <input type="date" id="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@Model.Date?.ToString("yyyy-MM-dd")" />
         <select id="hostname">
-        @{
-            var defaultSelected = string.IsNullOrWhiteSpace(Model.HostName) ? " selected=\"selected\"" : string.Empty;
+            @{
+                var defaultSelected = string.IsNullOrWhiteSpace(Model.HostName) ? " selected=\"selected\"" : string.Empty;
 
-            @Html.Raw($"\t\t\t<option value=\"\"{defaultSelected}>Machine</option>\n");
+                @Html.Raw($"\t\t\t<option value=\"\"{defaultSelected}>Machine</option>\n");
 
-            foreach(var serverUrl in Model.ServerSelectList)
-            {
-                var serverName = serverUrl.Text;
-                var selected = string.Equals(Model.HostName, serverName, StringComparison.InvariantCultureIgnoreCase) ? " selected=\"selected\"" : string.Empty;
+                foreach (var serverUrl in Model.ServerSelectList)
+                {
+                    var serverName = serverUrl.Text;
+                    var selected = string.Equals(Model.HostName, serverName, StringComparison.InvariantCultureIgnoreCase) ? " selected=\"selected\"" : string.Empty;
 
-                @Html.Raw($"\t\t\t<option value=\"{serverName}\"{selected}>{serverName}</options>\n");
+                    @Html.Raw($"\t\t\t<option value=\"{serverName}\"{selected}>{serverName}</options>\n");
+                }
             }
-        }
         </select>
         <input type="text" id="id" title="RequestId or a search term" placeholder="RequestId or a search term" style="width: 600px; max-width: 600px;" value="@(Model.Id)" />
         <input type="submit" id="showButton" value="Fetch request logs" onclick="redirect(); return false;" />
@@ -220,8 +241,9 @@
         });
     }
 
-    if ('@(Model.Id))') {
-        getLogs();
+    @if (Model.Id != null)
+    {
+        @Html.Raw("\t\t\tgetLogs();\n");
     }
 
     $.fn.extend({
