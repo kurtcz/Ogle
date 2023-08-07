@@ -37,7 +37,7 @@ namespace Ogle
         #region Public endpoints
 
         [HttpGet]
-		public IActionResult Index(string id, string hostName, DateTime? date)
+		public IActionResult Index(string? id, string? hostName, DateTime? date)
 		{
 			date ??= DateTime.Today.AddDays(-1);
             try

@@ -3,7 +3,6 @@
   <source media="(prefers-color-scheme: light)" srcset="ogle.svg" />
   <img src="ogle.svg" width="144" height="70"/>
 </picture>
-<!-- <img src="https://cdn.jsdelivr.net/gh/kurtcz/ogle/docs/ogle.svg" width="144" height="70"/> -->
 
 # Ogle
 Use Ogle with your asp.net core appplication to view logs or analyze custom request metrics to profile your application's health and performance.
@@ -40,7 +39,7 @@ Ogle is suitable for applications written in .NET 6
     ]
 }
 ```
-- Define `LogGroupKey`, `LogRecord` and `LogMetrics` classes (refer to the [Example](http:/https://github.com/kurtcz/Ogle/tree/develop/Example) project for details)
+- Define `LogGroupKey`, `LogRecord` and `LogMetrics` classes (refer to the [Example](../Example) project for details)
   - LogRecord defines the properties that you are interested in harvesting in each request. For example: Number of purchased items, total request time or number of requests in flight
   - LogGroupKey defines the properties to group your log metrics by. For example: Hostname, endpoint, username or time bucket.
   - LogMetrics defines the aggregate metrics that you want to view. For example: Total requests, Failed requests, Maximum requests in flight etc. These metrics are groupped by the LogGroupKey properties.
@@ -120,4 +119,4 @@ The endpoint will distribute the request to all web application nodes, the metri
 
 After data is saved, subsequent api calls for log metrics for that date will be read from the repository rather than being calculated on-the-fly from the logs.
 
-Refer to the [Example](http:/https://github.com/kurtcz/Ogle/tree/develop/Example) project for details
+Refer to the [Example](../Example) project for details
