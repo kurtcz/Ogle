@@ -156,7 +156,7 @@
     }
 
     function redirect() {
-        var url = "@(Url.Action("Index", "ogle"))";
+        var url = "/@(Model.RoutePrefix)/Index";
         var requestId = $('#id').val().trim();
         var date = $('#date').val();
         var hostname = $('#hostname').val();
@@ -232,7 +232,7 @@
 
                 @Html.Raw($"\t\t\tif (!hostname || hostname == '{serverName}')\n");
                 @Html.Raw("\t\t\t{\n");
-                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}ogle/BrowseLogFiles?date=' + $(\"#date\").val() + '&rand=' + getRandomInt(1000)));\n");
+                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}{Model.RoutePrefix}/BrowseLogFiles?date=' + $(\"#date\").val() + '&rand=' + getRandomInt(1000)));\n");
                 @Html.Raw("\t\t\t}\n");
             }
         }

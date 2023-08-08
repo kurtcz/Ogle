@@ -13,9 +13,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Conventions\" />
+  </ItemGroup>
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <None Include="..\docs\README.md" Pack="true" PackagePath="\" />
     <None Include="..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Conventions\" />
+  </ItemGroup>
 </Project>

@@ -4,7 +4,8 @@ namespace Ogle
 {
 	public class MetricsViewModel
 	{
-		public string[] KeyProperties { get; set; }
+        public string RoutePrefix { get; set; }
+        public string[] KeyProperties { get; set; }
         public string[] KeyPropertyDisplayNames { get; set; }
         public string[] ValueProperties { get; set; }
         public string[] ValuePropertyTypes { get; set; }

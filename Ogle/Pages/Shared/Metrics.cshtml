@@ -508,7 +508,7 @@
         dataResponses = resetDataResponses();
 
         $('#loader').show();
-        var url = '/ogle/GetMetricsFromAllServers?date=' + $('#date').val() + '&hourFrom=' + @(Model.HourFrom) + '&minuteFrom=' + @(Model.MinuteFrom) + '&minutesPerBucket=' + @(Model.MinutesPerBucket) + '&numberOfBuckets=' + @(Model.NumberOfBuckets)  + '&rand=' + getRandomInt(1000);
+        var url = '/@(Model.RoutePrefix)/GetMetricsFromAllServers?date=' + $('#date').val() + '&hourFrom=' + @(Model.HourFrom) + '&minuteFrom=' + @(Model.MinuteFrom) + '&minutesPerBucket=' + @(Model.MinutesPerBucket) + '&numberOfBuckets=' + @(Model.NumberOfBuckets)  + '&rand=' + getRandomInt(1000);
         ajaxPromises[0] = updateChartData(url);
 
         $.when.apply($, ajaxPromises).done(function () {
@@ -617,7 +617,7 @@
                 var date = $('#date').val();
                 var hour = $(this).text().substr(0, 2);
 
-                window.open('/ogle/metrics?date=' + date + '&hourFrom=' + hour + '&minutesPerBucket=@(Model.DrillDownMinutesPerBucket)&numberOfBuckets=@(Model.DrillDownNumberOfBuckets)&autoFetchData=true&canDrillDown=false', '_blank');
+                window.open('/@(Model.RoutePrefix)/metrics?date=' + date + '&hourFrom=' + hour + '&minutesPerBucket=@(Model.DrillDownMinutesPerBucket)&numberOfBuckets=@(Model.DrillDownNumberOfBuckets)&autoFetchData=true&canDrillDown=false', '_blank');
             });
         }
     }

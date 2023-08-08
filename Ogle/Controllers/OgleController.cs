@@ -44,6 +44,7 @@ namespace Ogle
             {
 				var model = new LogsViewModel
 				{
+					RoutePrefix = GetRoutePrefix(),
 					Id = id,
 					Date = DateOnly.FromDateTime(date.Value),
 					HostName = hostName,
@@ -222,6 +223,7 @@ namespace Ogle
 
                 return View(new MetricsViewModel
 				{
+					RoutePrefix = GetRoutePrefix(),
 					ServerUrls = _settings.CurrentValue.Hostnames.Select(i => GetHostnameUrl(Request.Scheme, i).ToString()).ToArray(),
 					Date = options.Date.Value,
 					HourFrom = options.HourFrom,
@@ -285,7 +287,7 @@ namespace Ogle
                 options.MinutesPerBucket ??= _settings.CurrentValue.DefaultMinutesPerBucket;
                 options.NumberOfBuckets ??= _settings.CurrentValue.DefaultNumberOfBuckets;
 
-				var endpoint = $"/ogle/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
+				var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
                 var responses = await CollateJsonResponsesFromServers(endpoint);
 
                 if (responses.All(i => i.Value.Error != null))
@@ -324,7 +326,7 @@ namespace Ogle
                     await logService.DeleteLogMetrics(dateOnly);
                 }
 				var numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets * _settings.CurrentValue.DrillDownNumberOfBuckets;
-                var endpoint = $"/ogle/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
+                var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
                 var responses = await CollateJsonResponsesFromServers(endpoint);
 
                 if (responses.All(i => i.Value.Error != null))
@@ -356,6 +358,14 @@ namespace Ogle
         #endregion
 
         #region Private methods
+
+		private string GetRoutePrefix()
+		{
+			var route = ControllerContext.ActionDescriptor.AttributeRouteInfo.Template;
+			var slashIndex = route.LastIndexOf('/');
+
+			return route.Substring(0, slashIndex);
+        }
 
         private static string[] GenerateTimeBuckets(LogReaderOptions options)
 		{

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ogle;
+using Ogle.Extensions;
 using Ogle.Repository.Sqlite;
 
 namespace Example
@@ -48,7 +49,11 @@ namespace Example
             builder.Services.AddOgleSqliteRepository<LogMetrics>(builder.Configuration.GetSection("Ogle:RepositorySettings"));
 
             // Ensure that Ogle controllers and razor pages are accessible
-            builder.Services.AddControllers();
+            builder.Services.AddControllers(options =>
+            {
+                options.UseOgleRoutePrefix("/test");
+                options.ApplyOgleAuthorizationPolicy("SaveMetricsFromAllServers", "Admin");
+            });
             builder.Services.AddRazorPages();
 
             var app = builder.Build();
