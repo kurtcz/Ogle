@@ -51,8 +51,14 @@ namespace Example
             // Ensure that Ogle controllers and razor pages are accessible
             builder.Services.AddControllers(options =>
             {
-                options.UseOgleRoutePrefix("/test");
-                options.ApplyOgleAuthorizationPolicy("SaveMetricsFromAllServers", "Admin");
+                //Uncomment the following line to change the default route prefix
+                //options.UseOgleRoutePrefix("/test");
+
+                //Uncomment the following line to assign custom authorization policy to a specific action
+                //options.AddOgleAuthorizationPolicy("SaveMetricsFromAllServers", "Admin");
+
+                //Uncomment the following line to assign custom authorization policy to the whole controller
+                //options.AddOgleAuthorizationPolicy("Admin");
             });
             builder.Services.AddRazorPages();
 

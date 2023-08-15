@@ -9,26 +9,26 @@ namespace Ogle.Extensions
 	{
         private static string OgleControllerName = nameof(OgleController).Replace("Controller", string.Empty);
 
-        public static MvcOptions ApplyOgleAuthorizeAttributes(this MvcOptions options, params AuthorizeAttribute[] authorizeAttributes)
+        public static MvcOptions AddOgleAuthorizeAttributes(this MvcOptions options, params AuthorizeAttribute[] authorizeAttributes)
         {
-            return options.ApplyOgleAuthorizeAttributes(null, authorizeAttributes);
+            return options.AddOgleAuthorizeAttributes(null, authorizeAttributes);
         }
 
-        public static MvcOptions ApplyOgleAuthorizeAttributes(this MvcOptions options, string actionName, params AuthorizeAttribute[] authorizeAttributes)
+        public static MvcOptions AddOgleAuthorizeAttributes(this MvcOptions options, string actionName, params AuthorizeAttribute[] authorizeAttributes)
         {
             options.Conventions.Add(new AuthorizeAttributeConvention(OgleControllerName, actionName, authorizeAttributes));
 
             return options;
         }
 
-        public static MvcOptions ApplyOgleAuthorizationPolicy(this MvcOptions options, params string[] policies)
+        public static MvcOptions AddOgleAuthorizationPolicy(this MvcOptions options, params string[] policies)
         {
-            return options.ApplyOgleAuthorizationPolicy(null, policies);
+            return options.AddOgleAuthorizationPolicy(null, policies);
         }
 
-        public static MvcOptions ApplyOgleAuthorizationPolicy(this MvcOptions options, string actionName, params string[] policies)
+        public static MvcOptions AddOgleAuthorizationPolicy(this MvcOptions options, string actionName, params string[] policies)
         {
-            return options.ApplyOgleAuthorizeAttributes(actionName, policies.Select(i => new AuthorizeAttribute(i)).ToArray());
+            return options.AddOgleAuthorizeAttributes(actionName, policies.Select(i => new AuthorizeAttribute(i)).ToArray());
         }
 
         public static MvcOptions UseOgleRoutePrefix(this MvcOptions options, string prefix)

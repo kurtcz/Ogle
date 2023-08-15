@@ -74,7 +74,18 @@ builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
             MaxRequestsInFlight = g.Max(j => j.RequestsInFlight)
             //etc.
         };
-    );
+    );    
+});
+builder.Services.AddControllers(options =>
+{
+    //optionally define a custom route prefix
+    //options.UseOgleRoutePrefix("/custom-prefix");
+
+    //optionally define a custom authorization policy for a the whole controller
+    //options.AddOgleAuthorizationPolicy("AdminPolicy");
+
+    //optionally define a custom authorization policy for a specific action
+    //options.AddOgleAuthorizationPolicy("SaveMetricsFromAllServers", "AdminPolicy");
 });
 ```
 - Ogle adds two new endpoints to your application.

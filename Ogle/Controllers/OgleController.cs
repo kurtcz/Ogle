@@ -287,6 +287,20 @@ namespace Ogle
                 options.MinutesPerBucket ??= _settings.CurrentValue.DefaultMinutesPerBucket;
                 options.NumberOfBuckets ??= _settings.CurrentValue.DefaultNumberOfBuckets;
 
+				var repo = ResolveLogMetricsRepository();
+
+				if (repo != null)
+				{
+					var logService = LogServiceFactory.CreateInstance(_settings, repo);
+
+					if (await logService.HasLogMetrics(options.Date.Value))
+					{
+						var metrics = await logService.GetLogMetrics(options, _settings.CurrentValue.GroupFunction);
+
+						return Json(metrics);
+					}
+				}
+
 				var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
                 var responses = await CollateJsonResponsesFromServers(endpoint);
 

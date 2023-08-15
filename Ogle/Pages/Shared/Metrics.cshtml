@@ -355,6 +355,7 @@
 
     function FillDataset(operation, data, bucketNames, keys, keyAccessor, valueAccessor, additionalParams) {
         var result = [];
+        var totalWeightPerKeyAndBucket = [];
 
         //concatenate expected keys with actual keys returned by the keyAccessor (to allow for rows with no data to show)
         keys = [...keys, ...data.map(i => keyAccessor(i))].distinctCaseInsensitive().sort();
@@ -364,6 +365,22 @@
             result[key] = [];
             for (var i = 0; i < bucketNames.length; i++) {
                 result[key].push(0);
+            }
+        }
+        if (additionalParams) {
+            for (var n in keys) {
+                var key = (keys[n] || '?').toLowerCase();
+                
+                totalWeightPerKeyAndBucket[key] = [];
+                for (var i = 0; i < bucketNames.length; i++) {
+                    var bucket = bucketNames[i];
+
+                    totalWeightPerKeyAndBucket[key][bucket] = additionalParams.weightData
+                                                                              .filter(j => key == (keyAccessor(j) || '?').toLowerCase() &&
+                                                                                           bucket == j.bucket)
+                                                                              .map(j => additionalParams.weightDataAccessor(j))
+                                                                              .reduce((a, b) => a + b, 0); // sum of an array
+                }
             }
         }
 
@@ -388,11 +405,9 @@
                     break;
                 case 'avg':
                     var weight = additionalParams.weightData[n].value;
-                    var totalWeight = additionalParams.weightData
-                                                        .filter(i => key.toLowerCase() == (keyAccessor(i) || '?').toLowerCase() && data[n].bucket == i.bucket)
-                                                        .map(i => additionalParams.weightDataAccessor(i))
-                                                        .reduce((a, b) => a + b, 0); //sum of an aray
-                    result[key][bucket] += val * weight /totalWeight;
+                    var totalWeight = totalWeightPerKeyAndBucket[key.toLowerCase()][data[n].bucket];
+
+                    result[key][bucket] += val * weight / totalWeight;
                     break;
             }
         }
