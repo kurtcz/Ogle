@@ -31,8 +31,21 @@
     }
 
     #chartModesContainer {
-        float: right;
+        position: absolute;
+        right: 0;
         margin-top: 5px;
+        margin-right: 10px;
+    }
+
+    #filterContainer {
+        position:absolute;
+        right: 0;
+        display: none;
+        margin-top: 10px;
+    }
+
+    #filterContainer select {
+        width: 100%;
     }
 
     #viewButtonsContainer {
@@ -66,7 +79,7 @@
     }
 
 @if (Model.CanDrillDown)
-    {
+{
     @Html.Raw("\t#dataTable tr:first-of-type th:not(:first-of-type):not(:last-of-type):hover {\n");
     @Html.Raw("\t\ttext-decoration: underline;\n");
     @Html.Raw("\t\tcursor: pointer;\n");
@@ -130,17 +143,36 @@
 <h2>@(ViewBag.Title)</h2>
 
 <div id="chartModesContainer">
-    @{
-        var i = 0;
-        foreach (var prop in Model.KeyProperties)
-        {
-            if (prop != Model.TimeBucketProperty)
+    <div>
+        @{
+            var i = 0;
+            foreach (var prop in Model.KeyProperties)
             {
-                <input type="button" id="@($"chartMode-{prop}")" value="Group by @(Model.KeyPropertyDisplayNames[i].ToLower())" onclick="chartMode = '@prop'; showMetrics();" />
+                if (prop != Model.TimeBucketProperty)
+                {
+                    <input type="button" id="@($"chartMode-{prop}")" value="Group by @(Model.KeyPropertyDisplayNames[i].ToLower())" onclick="chartMode = '@prop'; showMetrics();" />
+                }
+                i++;
             }
-            i++;
         }
-    }
+    </div>
+    <div id="filterContainer">
+        <h6>Filter:</h6>
+        @{
+            i = 0;
+            foreach (var prop in Model.KeyProperties)
+            {
+                if (prop != Model.TimeBucketProperty)
+                {
+                    @Model.KeyPropertyDisplayNames[i] <br />
+                    <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
+                        <option selected="selected">All</option>
+                    </select> <br />
+                }
+                i++;
+            }
+        }
+    </div>
 </div>
 <div>
     <form onsubmit="getMetrics(); return false;">
@@ -286,6 +318,35 @@
         };
     }
 
+    var filters = {
+    @{
+        i = 0;
+        foreach (var prop in Model.KeyProperties)
+        {
+            if (prop != Model.TimeBucketProperty)
+            {
+                if (i > 0)
+                {
+                    @Html.Raw(",\n");
+                }
+                @Html.Raw($"\t\t{prop}: {{\n\t\t\tkeyAccessor: x => x.{prop}\n\t\t}}");
+                i++;
+            }
+        }
+        @Html.Raw("\n");
+    }
+    };
+
+    function filterChanged(element) {
+        $("#filterContainer select").each(function () {
+            var key = $(this).data('key');
+            var val = $(this).val();
+
+            filters[key].value = val;
+        });
+        updateChartDatasets();
+    }
+
     function secondsToTimeFormat(value) {
         if (!Number.isInteger(value)) {
             return '';
@@ -345,7 +406,7 @@
     function onViewButtonClick(event) {
         var $viewButton = $(event.target);
 
-        $('#chartLabel').text($viewButton.attr('value'));
+        $('#chartLabel').text($viewButton.prop('value'));
         $('#viewButtonsContainer input[type=button]').css('background-color', '');
         $viewButton.css('background-color', 'lightblue');
 
@@ -370,7 +431,7 @@
         if (additionalParams) {
             for (var n in keys) {
                 var key = (keys[n] || '?').toLowerCase();
-                
+
                 totalWeightPerKeyAndBucket[key] = [];
                 for (var i = 0; i < bucketNames.length; i++) {
                     var bucket = bucketNames[i];
@@ -470,6 +531,16 @@
         return result;
     }
 
+    function filterDataResponses(dataset) {
+        for (var key in filters) {
+            var filter = filters[key];
+
+            dataset = dataset.filter(j => !filter.value || filter.keyAccessor(j) == filter.value);
+        }
+
+        return dataset;
+    }
+
     function updateChartData(url) {
         return $.ajax({
             url: url,
@@ -487,30 +558,43 @@
     {
         @Html.Raw($"\t\t\tdataResponses.{prop}.push(...result.{prop});\n");
     }
+    foreach(var prop in Model.KeyProperties)
+    {
+        @Html.Raw($"\t\t\tvar values_{prop} = dataResponses.{Model.TotalProperty}.map(i => i.{prop}).distinctCaseInsensitive();\n");
+        @Html.Raw($"\t\t\t$(\"#chartFilter-{prop}\").find('option').remove().end();\n");
+        @Html.Raw($"\t\t\t$(\"#chartFilter-{prop}\").append(new Option(\"All\", \"\", true, true));\n");
+        @Html.Raw($"\t\t\tfor (var i in values_{prop})\n");
+        @Html.Raw($"\t\t\t{{\n\t\t\t\t$(\"#chartFilter-{prop}\").append(new Option(values_{prop}[i], values_{prop}[i]));\n\t\t\t}}\n");
+    }
 }
+            $("#filterContainer").show();
+            updateChartDatasets();
+        });
+    }
 
-            var avgAdditionalParams = {
-                weightData: dataResponses.@(Model.TotalProperty),
-                weightDataAccessor: x => x.value
-            };
-            var keys = [];
+    function updateChartDatasets() {
+
+        var avgAdditionalParams = {
+            weightData: dataResponses.@(Model.TotalProperty),
+            weightDataAccessor: x => x.value
+        };
+        var keys = [];
 @{
     foreach (var key in Model.KeyProperties.Where(j => j != Model.TimeBucketProperty))
     {
         i = 0;
-        @Html.Raw($"\t\t\tkeys['{key}'] = dataResponses.totalRequests.map(i => i.{key});\n");
+        @Html.Raw($"\t\tkeys['{key}'] = filterDataResponses(dataResponses.{Model.TotalProperty}.map(i => i.{key}));\n");
         foreach(var prop in Model.ValueProperties)
         {
             var valueAccessor = Model.ValuePropertyTypes[i] == "TimeSpan" ? "x => parseTimeSpan(x.value)" : "x => x.value";
             var additionalParams = Model.ValuePropertyAggregationOperation[i] == "avg" ? ", avgAdditionalParams" : string.Empty;
 
-            @Html.Raw($"\t\t\tchartDatasets['{key}'].{prop} = FillDataset('{Model.ValuePropertyAggregationOperation[i]}', dataResponses.{prop}, dataResponses.bucketNames, keys['{key}'], x => x.{key}, {valueAccessor}{additionalParams});\n");
+            @Html.Raw($"\t\tchartDatasets['{key}'].{prop} = FillDataset('{Model.ValuePropertyAggregationOperation[i]}', filterDataResponses(dataResponses.{prop}), dataResponses.bucketNames, keys['{key}'], x => x.{key}, {valueAccessor}{additionalParams});\n");
             i++;
         }
     }
 }
-            showMetrics();
-        });
+        showMetrics();
     }
 
     function getRandomInt(max) {
