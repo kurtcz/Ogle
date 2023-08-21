@@ -28,7 +28,7 @@ namespace Ogle.Repository.Sql.Abstractions
             {
                 connection.ConnectionString = Settings.CurrentValue.ConnectionString;
 
-                await CreateTableIfNeeded();
+                await CreateTablesIfNeeded();
 
                 var sql = BuildCountCommand();
                 var count = Convert.ToInt64(await connection.ExecuteScalarAsync(sql, new { from, to }));
@@ -43,7 +43,7 @@ namespace Ogle.Repository.Sql.Abstractions
             {
                 connection.ConnectionString = Settings.CurrentValue.ConnectionString;
 
-                await CreateTableIfNeeded();
+                await CreateTablesIfNeeded();
 
                 var sql = BuildSelectCommand();
                 var result = await connection.QueryAsync<TMetrics>(sql, new { from, to });
@@ -58,7 +58,7 @@ namespace Ogle.Repository.Sql.Abstractions
             {
                 connection.ConnectionString = Settings.CurrentValue.ConnectionString;
 
-                await CreateTableIfNeeded();
+                await CreateTablesIfNeeded();
 
                 var sql = BuildDeleteCommand();
                 var deleted = await connection.ExecuteAsync(sql, new { from, to });
@@ -67,7 +67,7 @@ namespace Ogle.Repository.Sql.Abstractions
             }
         }
 
-        public virtual async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics)
+        public virtual async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedGroupping)
         {
             var dt = new DataTable(Settings.CurrentValue.TableName);
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite); 
@@ -83,7 +83,7 @@ namespace Ogle.Repository.Sql.Abstractions
             {
                 connection.ConnectionString = Settings.CurrentValue.ConnectionString;
 
-                await CreateTableIfNeeded();
+                await CreateTablesIfNeeded();
 
                 var sql = BuildInsertCommand();
 
@@ -99,23 +99,28 @@ namespace Ogle.Repository.Sql.Abstractions
 
         #endregion
 
-        public virtual async Task CreateTableIfNeeded()
+        public virtual async Task CreateTablesIfNeeded()
         {
             if (!Settings.CurrentValue.AutoCreateTable)
             {
                 return;
             }
 
-            using (var connection = new TDbConnection())
-            {
-                connection.ConnectionString = Settings.CurrentValue.ConnectionString;
+            var detailedTableModes = new[] { false, true };
 
-                var sql = BuildCreateTableCommand();
-                var result = await connection.ExecuteAsync(sql);
+            foreach (var detailedTableMode in detailedTableModes)
+            {
+                using (var connection = new TDbConnection())
+                {
+                    connection.ConnectionString = Settings.CurrentValue.ConnectionString;
+
+                    var sql = BuildCreateTableCommand(detailedTableMode);
+                    var result = await connection.ExecuteAsync(sql);
+                }
             }
         }
 
-        protected abstract string BuildCreateTableCommand();
+        protected abstract string BuildCreateTableCommand(bool detailedTable);
 
         #region Private methods
 

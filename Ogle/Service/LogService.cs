@@ -177,9 +177,11 @@ namespace Ogle
             return result;
         }
 
-        public async Task<long> SaveLogMetrics(DateOnly date, IEnumerable<TMetrics> metrics)
+        public async Task<long> SaveLogMetrics(DateOnly date, IEnumerable<TMetrics> metrics, bool detailedGroupping)
         {
-            return await _repo.SaveMetrics(metrics.Cast<TMetrics>());
+            var rowsSaved = await _repo.SaveMetrics(metrics.Cast<TMetrics>(), detailedGroupping);
+
+            return rowsSaved;
         }
 
         public async Task<string> GetLogContent(string searchTerm, DateOnly date)

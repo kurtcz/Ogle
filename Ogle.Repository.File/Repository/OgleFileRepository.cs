@@ -16,6 +16,7 @@ namespace Ogle.Repository.File
     {
         const string SearchPattern = @"OgleMetrics-*.json";
         const string FileMask = @"OgleMetrics-{0:yyyy-MM-dd}.json";
+        const string DetailedFileMask = @"OgleMetrics-detail-{0:yyyy-MM-dd}.json";
 
         protected IOptionsMonitor<OgleFileRepositoryOptions> Settings { get; }
 
@@ -94,7 +95,7 @@ namespace Ogle.Repository.File
             return filesDeleted > 0;
         }
 
-        public virtual async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics)
+        public virtual async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedGroupping)
         {
             var props = typeof(TMetrics).GetProperties();
             var timeBucketProp = props.Single(i => i.GetCustomAttributes(true).Any(j => j is TimeBucketAttribute));
@@ -119,7 +120,7 @@ namespace Ogle.Repository.File
             foreach(var date in dict.Keys)
             {
                 var content = JsonSerializer.Serialize(dict[date]);
-                var filename = string.Format(FileMask, date);
+                var filename = string.Format(detailedGroupping? DetailedFileMask : FileMask, date);
                 var path = Path.Combine(Settings.CurrentValue.Folder, filename);
 
                 await System.IO.File.AppendAllTextAsync(path, content);

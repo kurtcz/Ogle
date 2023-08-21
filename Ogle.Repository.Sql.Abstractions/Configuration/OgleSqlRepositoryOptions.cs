@@ -4,7 +4,8 @@
 	{
 		public string ConnectionString { get; set; }
         public string TableName { get; set; }
-		public bool AutoCreateTable { get; set; }
+        public string DetailedTableName { get; set; }
+        public bool AutoCreateTable { get; set; }
 	}
 }
 

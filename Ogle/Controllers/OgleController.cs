@@ -327,20 +327,22 @@ namespace Ogle
         [HttpGet]
 		public async Task<IActionResult> SaveMetricsFromAllServers(DateTime? date)
 		{
-            try
-            {
+			try
+			{
 				date ??= DateTime.Today.AddDays(-1);
 
-                var dateOnly = DateOnly.FromDateTime(date.Value);
-                var repo = ResolveLogMetricsRepository();
-                var logService = LogServiceFactory.CreateInstance(_settings, repo);
+				var dateOnly = DateOnly.FromDateTime(date.Value);
+				var repo = ResolveLogMetricsRepository();
+				var logService = LogServiceFactory.CreateInstance(_settings, repo);
 
-                if (await logService.HasLogMetrics(dateOnly))
-                {
-                    await logService.DeleteLogMetrics(dateOnly);
-                }
-				var numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets * _settings.CurrentValue.DrillDownNumberOfBuckets;
-                var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
+				if (await logService.HasLogMetrics(dateOnly))
+				{
+					await logService.DeleteLogMetrics(dateOnly);
+				}
+
+                //1st save metrics using default groupping
+                var numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets;
+                var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DefaultMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
                 var responses = await CollateJsonResponsesFromServers(endpoint);
 
                 if (responses.All(i => i.Value.Error != null))
@@ -349,24 +351,45 @@ namespace Ogle
                 }
                 else
                 {
-					var rowsSaved = 0L;
-					var metrics = responses.Where(i => i.Value.Error == null)
-										   .SelectMany(i => i.Value.Payload)
-										   .ToArray();
+                    var rowsSaved = 0L;
+                    var metrics = responses.Where(i => i.Value.Error == null)
+                                       .SelectMany(i => i.Value.Payload)
+                                       .ToArray();
 
-					if (Enumerable.Any(metrics))
-					{                        
-                        rowsSaved = await logService.SaveLogMetrics(dateOnly, ConvertToMetricsType(metrics));
+                    //2nd save metrics using detailed groupping
+                    numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets * _settings.CurrentValue.DrillDownNumberOfBuckets;
+                    endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
+                    responses = await CollateJsonResponsesFromServers(endpoint);
+
+                    if (responses.All(i => i.Value.Error != null))
+                    {
+                        return Problem(string.Join("\n", responses.Values.Select(i => i.Error)));
+                    }
+                    else
+                    {
+                        var detailedRowsSaved = 0L;
+                        var detailedMetrics = responses.Where(i => i.Value.Error == null)
+                                                       .SelectMany(i => i.Value.Payload)
+                                                       .ToArray();
+
+                        if (Enumerable.Any(metrics))
+						{
+							rowsSaved = await logService.SaveLogMetrics(dateOnly, ConvertToMetricsType(metrics), false);
+						}
+                        if (Enumerable.Any(detailedMetrics))
+                        {
+                            detailedRowsSaved = await logService.SaveLogMetrics(dateOnly, ConvertToMetricsType(detailedMetrics), true);
+                        }
+
+                        return Ok(new[] { rowsSaved, detailedRowsSaved });
 					}
-
-                    return Ok(rowsSaved);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ex.Message);
-                throw;
-            }
+				}
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, ex.Message);
+				throw;
+			}
         }
 
         #endregion

@@ -9,7 +9,7 @@ namespace Ogle
         Task<bool> DeleteMetrics(DateTime from, DateTime to);
         Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to);
 		Task<bool> HasMetrics(DateTime from, DateTime to);
-		Task<long> SaveMetrics(IEnumerable<TMetrics> metrics);
+		Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedGroupping);
 	}
 }
 

@@ -18,7 +18,7 @@ namespace Ogle.Repository.MsSqlServer
 
         #region Overriden methods
 
-        public async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics)
+        public async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedGroupping)
         {
             var dt = new DataTable(Settings.CurrentValue.TableName);
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
@@ -45,7 +45,7 @@ namespace Ogle.Repository.MsSqlServer
             {
                 using (var bulk = new SqlBulkCopy(connection))
                 {
-                    bulk.DestinationTableName = Settings.CurrentValue.TableName;
+                    bulk.DestinationTableName = detailedGroupping? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
                     bulk.NotifyAfter = dt.Rows.Count;
                     bulk.SqlRowsCopied += (s, e) => rowsInserted += e.RowsCopied;
 
@@ -62,9 +62,10 @@ namespace Ogle.Repository.MsSqlServer
             return rowsInserted;
         }
 
-        protected override string BuildCreateTableCommand()
+        protected override string BuildCreateTableCommand(bool detailedTable)
         {
-            var sb = new StringBuilder($"IF OBJECT_ID(N'{Settings.CurrentValue.TableName}') IS NULL CREATE TABLE {Settings.CurrentValue.TableName} (_id INT IDENTITY PRIMARY KEY");
+            var tableName = detailedTable ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
+            var sb = new StringBuilder($"IF OBJECT_ID(N'{tableName}') IS NULL CREATE TABLE {tableName} (_id INT IDENTITY PRIMARY KEY");
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
             foreach (var prop in props)

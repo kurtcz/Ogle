@@ -16,9 +16,10 @@ namespace Ogle.Repository.PostgreSql
 
         #region Overriden methods
 
-        protected override string BuildCreateTableCommand()
+        protected override string BuildCreateTableCommand(bool detailedTable)
         {
-            var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {Settings.CurrentValue.TableName} (_id SERIAL PRIMARY KEY");
+            var tableName = detailedTable ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
+            var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {tableName} (_id SERIAL PRIMARY KEY");
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
             foreach (var prop in props)
