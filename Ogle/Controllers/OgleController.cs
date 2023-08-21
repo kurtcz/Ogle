@@ -20,7 +20,6 @@ using System.Text.RegularExpressions;
 
 namespace Ogle
 {
-	[Route("/ogle/{action=Index}")]
 	public class OgleController : Controller
 	{
 		private readonly ILogger<OgleController> _logger;
@@ -37,7 +36,10 @@ namespace Ogle
         #region Public endpoints
 
         [HttpGet]
-		public IActionResult Index(string? id, string? hostName, DateTime? date)
+        [Route("/ogle/")]
+        [Route("/ogle/Logs")]
+        [Route("/ogle/Index")]
+        public IActionResult Index(string? id, string? hostName, DateTime? date)
 		{
 			date ??= DateTime.Today.AddDays(-1);
             try
@@ -65,7 +67,8 @@ namespace Ogle
 		}
 
 		[HttpGet]
-		public IActionResult BrowseLogFiles(DateTime? date)
+        [Route("/ogle/BrowseLogFiles")]
+        public IActionResult BrowseLogFiles(DateTime? date)
 		{
             try
             {
@@ -93,7 +96,8 @@ namespace Ogle
         }
 
         [HttpGet]
-		public async Task<IActionResult> GetLogs(DateTime? date, string id)
+        [Route("/ogle/GetLogs")]
+        public async Task<IActionResult> GetLogs(DateTime? date, string id)
 		{
             try
             {
@@ -132,7 +136,8 @@ namespace Ogle
         }
 
         [HttpGet]
-		public IActionResult DownloadLog(string log)
+        [Route("/ogle/DownloadLog")]
+        public IActionResult DownloadLog(string log)
 		{
             try
             {
@@ -150,7 +155,8 @@ namespace Ogle
         }
 
         [HttpGet]
-		public async Task<IActionResult> GetRecords(DateTime? date)
+        [Route("/ogle/GetRecords")]
+        public async Task<IActionResult> GetRecords(DateTime? date)
 		{
             try
             {
@@ -175,7 +181,7 @@ namespace Ogle
         }
 
         [HttpGet]
-		[Route("/ogle/metrics")]
+		[Route("/ogle/Metrics")]
         public IActionResult Metrics(DateTime? date, LogReaderOptions options, bool autoFetchData, bool canDrillDown = true)
 		{
             try
@@ -253,7 +259,8 @@ namespace Ogle
         }
 
         [HttpGet]
-		public async Task<IActionResult> GetMetrics(DateTime? date, LogReaderOptions options)
+        [Route("/ogle/GetMetrics")]
+        public async Task<IActionResult> GetMetrics(DateTime? date, LogReaderOptions options)
 		{
             try
             {
@@ -277,7 +284,8 @@ namespace Ogle
         }
 
         [HttpGet]
-		public async Task<IActionResult> GetMetricsFromAllServers(DateTime? date, LogReaderOptions options)
+        [Route("/ogle/GetMetricsFromAllServers")]
+        public async Task<IActionResult> GetMetricsFromAllServers(DateTime? date, LogReaderOptions options)
 		{
             try
             {
@@ -325,7 +333,8 @@ namespace Ogle
         }
 
         [HttpGet]
-		public async Task<IActionResult> SaveMetricsFromAllServers(DateTime? date)
+        [Route("/ogle/SaveMetricsFromAllServers")]
+        public async Task<IActionResult> SaveMetricsFromAllServers(DateTime? date)
 		{
 			try
 			{
@@ -401,7 +410,12 @@ namespace Ogle
 			var route = ControllerContext.ActionDescriptor.AttributeRouteInfo.Template;
 			var slashIndex = route.LastIndexOf('/');
 
-			return route.Substring(0, slashIndex);
+			if (slashIndex >= 0)
+			{
+				return route.Substring(0, slashIndex);
+			}
+
+			return route;
         }
 
         private static string[] GenerateTimeBuckets(LogReaderOptions options)
