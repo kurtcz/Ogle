@@ -15,29 +15,34 @@ namespace Ogle.Repository.File
     public class OgleFileRepository<TMetrics> : ILogMetricsRepository<TMetrics>
     {
         const string SearchPattern = @"OgleMetrics-*.json";
-        const string FileMask = @"OgleMetrics-{0:yyyy-MM-dd}.json";
-        const string DetailedFileMask = @"OgleMetrics-detail-{0:yyyy-MM-dd}.json";
+        const string DetailedSearchPattern = @"OgleMetricsDetails-*.json";
+        readonly string FileMask;
+        readonly string DetailedFileMask;
 
         protected IOptionsMonitor<OgleFileRepositoryOptions> Settings { get; }
 
         public OgleFileRepository(IOptionsMonitor<OgleFileRepositoryOptions> settings)
         {
             Settings = settings;
+            FileMask = SearchPattern.Replace("*", "{0:yyyy-MM-dd}");
+            DetailedFileMask = DetailedSearchPattern.Replace("*", "{0:yyyy-MM-dd}");
         }
 
         #region ILogMetricsRepository methods
 
-        public virtual async Task<bool> HasMetrics(DateTime from, DateTime to)
+        public virtual async Task<bool> HasMetrics(DateTime from, DateTime to, bool detailedGroupping)
         {
             if (!Directory.Exists(Settings.CurrentValue.Folder))
             {
                 Directory.CreateDirectory(Settings.CurrentValue.Folder);
             }
-            var files = Directory.GetFiles(Settings.CurrentValue.Folder, SearchPattern);
+            var searchPattern = detailedGroupping ? DetailedSearchPattern : SearchPattern;
+            var files = Directory.GetFiles(Settings.CurrentValue.Folder, searchPattern);
 
             for (var date = from; date < to; date = date.AddMinutes(1))
             {
-                var expectedFile = string.Format(FileMask, date);
+                var fileMask = detailedGroupping ? DetailedFileMask : FileMask;
+                var expectedFile = string.Format(fileMask, date);
 
                 if (files.Select(i => Path.GetFileName(i)).Any(i => i == expectedFile))
                 {
@@ -48,7 +53,7 @@ namespace Ogle.Repository.File
             return false;
         }
 
-        public virtual async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to)
+        public virtual async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to, bool detailedGroupping)
         {
             var metrics = new List<TMetrics>();
             var props = typeof(TMetrics).GetProperties();
@@ -59,7 +64,7 @@ namespace Ogle.Repository.File
                 Directory.CreateDirectory(Settings.CurrentValue.Folder);
             }
 
-            foreach (var path in GetFilesFromInterval(from, to))
+            foreach (var path in GetFilesFromInterval(from, to, detailedGroupping))
             {
                 var content = await System.IO.File.ReadAllTextAsync(path);
                 var batch = JsonSerializer.Deserialize<IEnumerable<TMetrics>>(content);
@@ -77,7 +82,7 @@ namespace Ogle.Repository.File
             return filtered;
         }
 
-        public virtual async Task<bool> DeleteMetrics(DateTime from, DateTime to)
+        public virtual async Task<bool> DeleteMetrics(DateTime from, DateTime to, bool detailedGroupping)
         {
             var filesDeleted = 0;
 
@@ -86,7 +91,7 @@ namespace Ogle.Repository.File
                 Directory.CreateDirectory(Settings.CurrentValue.Folder);
             }
 
-            foreach (var path in GetFilesFromInterval(from, to))
+            foreach (var path in GetFilesFromInterval(from, to, detailedGroupping))
             {
                 System.IO.File.Delete(path);
                 filesDeleted++;
@@ -133,10 +138,11 @@ namespace Ogle.Repository.File
 
         #region Private methods
 
-        private IEnumerable<string> GetFilesFromInterval(DateTime from, DateTime to)
+        private IEnumerable<string> GetFilesFromInterval(DateTime from, DateTime to, bool detailedGroupping)
         {
-            var fromFile = string.Format(FileMask, from);
-            var toFile = string.Format(FileMask, to);
+            var fileMask = detailedGroupping ? DetailedFileMask : FileMask;
+            var fromFile = string.Format(fileMask, from);
+            var toFile = string.Format(fileMask, to);
 
             return Directory.GetFiles(Settings.CurrentValue.Folder, SearchPattern, SearchOption.TopDirectoryOnly)
                             .Where(path => string.Compare(fromFile, Path.GetFileName(path)) <= 0 &&

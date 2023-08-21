@@ -296,12 +296,13 @@ namespace Ogle
                 options.NumberOfBuckets ??= _settings.CurrentValue.DefaultNumberOfBuckets;
 
 				var repo = ResolveLogMetricsRepository();
+				var detail = options.MinutesPerBucket == _settings.CurrentValue.DrillDownMinutesPerBucket;
 
 				if (repo != null)
 				{
 					var logService = LogServiceFactory.CreateInstance(_settings, repo);
 
-					if (await logService.HasLogMetrics(options.Date.Value))
+					if (await logService.HasLogMetrics(options.Date.Value, detail))
 					{
 						var metrics = await logService.GetLogMetrics(options, _settings.CurrentValue.GroupFunction);
 
@@ -344,10 +345,14 @@ namespace Ogle
 				var repo = ResolveLogMetricsRepository();
 				var logService = LogServiceFactory.CreateInstance(_settings, repo);
 
-				if (await logService.HasLogMetrics(dateOnly))
+				if (await logService.HasLogMetrics(dateOnly, false))
 				{
-					await logService.DeleteLogMetrics(dateOnly);
+					await logService.DeleteLogMetrics(dateOnly, false);
 				}
+                if (await logService.HasLogMetrics(dateOnly, true))
+                {
+                    await logService.DeleteLogMetrics(dateOnly, true);
+                }
 
                 //1st save metrics using default groupping
                 var numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets;

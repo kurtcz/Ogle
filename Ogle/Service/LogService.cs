@@ -160,7 +160,8 @@ namespace Ogle
                                         options.MinuteFrom,
                                         0);
                 var to = from.AddMinutes(options.MinutesPerBucket.Value * options.NumberOfBuckets.Value);
-                var metrics = await _repo.GetMetrics(from, to);
+                var detail = options.MinutesPerBucket == _settings.CurrentValue.DrillDownMinutesPerBucket;
+                var metrics = await _repo.GetMetrics(from, to, detail);
 
                 UpdateTimeBucket(ref metrics, options);
                 result = metrics;
@@ -407,20 +408,20 @@ namespace Ogle
             return value;
         }
 
-        public async Task<bool> HasLogMetrics(DateOnly date)
+        public async Task<bool> HasLogMetrics(DateOnly date, bool detailedGroupping)
         {
             var from = new DateTime(date.Year, date.Month, date.Day);
             var to = from.AddDays(1);
-            var b = await _repo.HasMetrics(from, to);
+            var b = await _repo.HasMetrics(from, to, detailedGroupping);
 
             return b;
         }
 
-        public async Task<bool> DeleteLogMetrics(DateOnly date)
+        public async Task<bool> DeleteLogMetrics(DateOnly date, bool detailedGroupping)
         {
             var from = new DateTime(date.Year, date.Month, date.Day);
-            var to = from.AddDays(1);
-            var b = await _repo.DeleteMetrics(from, to);
+            var to = from.AddDays(1);            
+            var b = await _repo.DeleteMetrics(from, to, detailedGroupping);
 
             return b;
         }

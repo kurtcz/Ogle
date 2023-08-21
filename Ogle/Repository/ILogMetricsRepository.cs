@@ -6,9 +6,9 @@ namespace Ogle
 {
 	public interface ILogMetricsRepository<TMetrics>
     {
-        Task<bool> DeleteMetrics(DateTime from, DateTime to);
-        Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to);
-		Task<bool> HasMetrics(DateTime from, DateTime to);
+        Task<bool> DeleteMetrics(DateTime from, DateTime to, bool detailedGroupping);
+        Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to, bool detailedGroupping);
+		Task<bool> HasMetrics(DateTime from, DateTime to, bool detailedGroupping);
 		Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedGroupping);
 	}
 }

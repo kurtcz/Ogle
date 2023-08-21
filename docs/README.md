@@ -109,6 +109,7 @@ Example repository setting in appsettings.json:
         "RepositorySettings": {
             "ConnectionString": "Data Source=sqlite.db",
             "TableName": "RequestMetrics",
+            "DetailedTableName": "RequestMetricsDetails",
             "AutoCreateTable": true
         }
     }

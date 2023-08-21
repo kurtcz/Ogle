@@ -22,7 +22,7 @@ namespace Ogle.Repository.Sql.Abstractions
 
         #region ILogMetricsRepository methods
 
-        public virtual async Task<bool> HasMetrics(DateTime from, DateTime to)
+        public virtual async Task<bool> HasMetrics(DateTime from, DateTime to, bool detailedTable)
         {
             using (var connection = new TDbConnection())
             {
@@ -30,14 +30,14 @@ namespace Ogle.Repository.Sql.Abstractions
 
                 await CreateTablesIfNeeded();
 
-                var sql = BuildCountCommand();
+                var sql = BuildCountCommand(detailedTable);
                 var count = Convert.ToInt64(await connection.ExecuteScalarAsync(sql, new { from, to }));
 
                 return count > 0;
             }
         }
 
-        public virtual async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to)
+        public virtual async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to, bool detailedTable)
         {
             using(var connection = new TDbConnection())
             {
@@ -45,14 +45,14 @@ namespace Ogle.Repository.Sql.Abstractions
 
                 await CreateTablesIfNeeded();
 
-                var sql = BuildSelectCommand();
+                var sql = BuildSelectCommand(detailedTable);
                 var result = await connection.QueryAsync<TMetrics>(sql, new { from, to });
 
                 return result;
             }
         }
 
-        public virtual async Task<bool> DeleteMetrics(DateTime from, DateTime to)
+        public virtual async Task<bool> DeleteMetrics(DateTime from, DateTime to, bool detailedTable)
         {
             using (var connection = new TDbConnection())
             {
@@ -60,14 +60,14 @@ namespace Ogle.Repository.Sql.Abstractions
 
                 await CreateTablesIfNeeded();
 
-                var sql = BuildDeleteCommand();
+                var sql = BuildDeleteCommand(detailedTable);
                 var deleted = await connection.ExecuteAsync(sql, new { from, to });
 
                 return deleted > 0;
             }
         }
 
-        public virtual async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedGroupping)
+        public virtual async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedTable)
         {
             var dt = new DataTable(Settings.CurrentValue.TableName);
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite); 
@@ -85,7 +85,7 @@ namespace Ogle.Repository.Sql.Abstractions
 
                 await CreateTablesIfNeeded();
 
-                var sql = BuildInsertCommand();
+                var sql = BuildInsertCommand(detailedTable);
 
                 foreach (var row in metrics)
                 {
@@ -124,8 +124,9 @@ namespace Ogle.Repository.Sql.Abstractions
 
         #region Private methods
 
-        private string BuildSelectCommand()
+        private string BuildSelectCommand(bool detailedGroupping)
         {
+            var tableName = detailedGroupping ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
             var sql = new StringBuilder("SELECT ");
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
@@ -140,14 +141,15 @@ namespace Ogle.Repository.Sql.Abstractions
                 sql.Append(prop.Name);
                 i++;
             }
-            sql.Append($" FROM {Settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to");
+            sql.Append($" FROM {tableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to");
 
             return sql.ToString();
         }
 
-        private string BuildInsertCommand()
+        private string BuildInsertCommand(bool detailedGroupping)
         {
-            var sql = new StringBuilder($"INSERT INTO {Settings.CurrentValue.TableName} (");
+            var tableName = detailedGroupping ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
+            var sql = new StringBuilder($"INSERT INTO {tableName} (");
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite).ToArray();
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
 
@@ -178,20 +180,22 @@ namespace Ogle.Repository.Sql.Abstractions
             return sql.ToString();
         }
 
-        private string BuildDeleteCommand()
+        private string BuildDeleteCommand(bool detailedGroupping)
         {
+            var tableName = detailedGroupping ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
-            var sql = $"DELETE FROM {Settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
+            var sql = $"DELETE FROM {tableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
 
             return sql;
         }
 
-        private string BuildCountCommand()
+        private string BuildCountCommand(bool detailedGroupping)
         {
+            var tableName = detailedGroupping ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
-            var sql = $"SELECT COUNT(*) FROM {Settings.CurrentValue.TableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
+            var sql = $"SELECT COUNT(*) FROM {tableName} WHERE {timeBucketProp.Name} >= @from AND {timeBucketProp.Name} < @to";
 
             return sql;
         }
