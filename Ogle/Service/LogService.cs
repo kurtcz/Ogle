@@ -202,6 +202,8 @@ namespace Ogle
             var keyProp = props.Single(i => i.GetCustomAttributes(true)
                                              .Any(j => (j as MandatoryAttribute)?.IsKey ?? false));
             var keys = new HashSet<string>();
+            var previousLineMatched = false;
+            var backBuffer = new LinkedList<string>();
             var sb = new StringBuilder();
 
             foreach(var logLine in ReadLogs(date))
@@ -210,11 +212,78 @@ namespace Ogle
                 {
                     var match = mandatoryAttribute.Regex.Match(logLine);
 
-                    keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                    if (match.Success)
+                    {
+                        keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                    }
+                    else
+                    {
+                        //search term found on a line that does not match the mandatory pattern (typically exceptions)
+                        //go back and find all matching lines from our back buffer
+                        if (backBuffer.Any() && !previousLineMatched)
+                        {
+                            for(var element = backBuffer.Last; element != null; element = element.Previous)
+                            {
+                                var backBufferLine = element.Value;
+
+                                match = mandatoryAttribute.Regex.Match(backBufferLine);
+
+                                if (match.Success)
+                                {
+                                    keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                                    for(element = backBuffer.First; element != null;)
+                                    {
+                                        backBufferLine = element.Value;
+                                        if (keys.Any(key => backBufferLine.Contains(key)))
+                                        {
+                                            var next = element.Next;
+
+                                            //remove the matching line from our back buffer
+                                            backBuffer.Remove(element);
+                                            element = next;
+
+                                            sb.AppendLine(backBufferLine);
+                                        }
+                                        else
+                                        {
+                                            element = element.Next;
+                                        }
+                                    }
+                                    previousLineMatched = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
+
+                if (backBuffer.Count == _settings.CurrentValue.LogReaderBackBufferCapacity)
+                {
+                    backBuffer.RemoveFirst();
+                }
+                backBuffer.AddLast(logLine);
+
                 if(keys.Any(key => logLine.Contains(key)))
                 {
                     sb.AppendLine(logLine);
+                    previousLineMatched = true;
+                }
+                else if (previousLineMatched)
+                {
+                    var match = mandatoryAttribute.Regex.Match(logLine);
+
+                    if (match.Success)
+                    {
+                        //this line does not contain the search term, but it matches the mandatory pattern
+                        //it belongs to a request that we do not care about
+                        previousLineMatched = false;
+                    }
+                    else
+                    {
+                        //certain messages get logged on multiple lines (typically exceptions)
+                        //in such case only the 1st line matches the regex
+                        sb.AppendLine(logLine);
+                    }
                 }
             }
 
