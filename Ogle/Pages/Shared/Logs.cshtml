@@ -203,7 +203,7 @@
 
                 @Html.Raw($"\t\t\tif (!hostname || hostname == '' || hostname == '{serverName}')\n");
                 @Html.Raw("\t\t\t{\n");
-                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}ogle/GetLogs?date=' + $(\"#date\").val() + '&id=' + $(\"#id\").val() + '&rand=' + getRandomInt(1000)));\n");
+                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}{Model.RoutePrefix}/GetLogs?date=' + $(\"#date\").val() + '&id=' + $(\"#id\").val() + '&rand=' + getRandomInt(1000)));\n");
                 @Html.Raw("\t\t\t}\n");
             }
         }
