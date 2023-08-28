@@ -583,7 +583,7 @@
     foreach (var key in Model.KeyProperties.Where(j => j != Model.TimeBucketProperty))
     {
         i = 0;
-        @Html.Raw($"\t\tkeys['{key}'] = filterDataResponses(dataResponses.{Model.TotalProperty}.map(i => i.{key}));\n");
+        @Html.Raw($"\t\tkeys['{key}'] = filterDataResponses(dataResponses.{Model.TotalProperty}).map(i => i.{key});\n");
         foreach(var prop in Model.ValueProperties)
         {
             var valueAccessor = Model.ValuePropertyTypes[i] == "TimeSpan" ? "x => parseTimeSpan(x.value)" : "x => x.value";
