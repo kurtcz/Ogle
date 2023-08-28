@@ -1,7 +1,7 @@
 ﻿@using Ogle
 @model LogsViewModel
 @{
-    ViewBag.Title = "Request Logs";
+    ViewBag.Title = "View Logs";
 }
 <style>
     @@media (prefers-color-scheme: dark) {
@@ -52,13 +52,23 @@
         font-size: 0.9em !important;
     }
 
+    .highlight {
+        background-color: yellow;
+        color: black;
+    }
+
+    .patternMatch {
+        font-weight: bold;
+        color: firebrick;
+    }
+
     select option {
         color: initial;
     }
 
-        select option[value=""] {
-            color: gray;
-        }
+    select option[value=""] {
+        color: gray;
+    }
 
     @@keyframes spin {
         0% {
@@ -203,7 +213,7 @@
 
                 @Html.Raw($"\t\t\tif (!hostname || hostname == '' || hostname == '{serverName}')\n");
                 @Html.Raw("\t\t\t{\n");
-                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}{Model.RoutePrefix}/GetLogs?date=' + $(\"#date\").val() + '&id=' + $(\"#id\").val() + '&rand=' + getRandomInt(1000)));\n");
+                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}{Model.RoutePrefix}/GetLogs?date=' + $(\"#date\").val() + '&id=' + $(\"#id\").val() + '&highlight={Model.Highlight}&rand=' + getRandomInt(1000)));\n");
                 @Html.Raw("\t\t\t}\n");
             }
         }

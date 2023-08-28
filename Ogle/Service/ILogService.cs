@@ -17,6 +17,7 @@ namespace Ogle
 		Task<bool> DeleteLogMetrics(DateOnly date, bool detailedGroupping);
 		Task<long> SaveLogMetrics(DateOnly date, IEnumerable<TMetrics> metrics, bool detailedGroupping);
 		Task<string> GetLogContent(string searchTerm, DateOnly date);
+		string HighlightLogContent(string content, string searchTerm);
 		IEnumerable<string> GetLogFilenames(DateOnly? date);
 		Stream GetFileStreamWithoutLocking(string filename);
     }

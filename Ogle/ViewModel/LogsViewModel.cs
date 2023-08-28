@@ -9,9 +9,9 @@ namespace Ogle
 		public string RoutePrefix { get; set; }
 		public string Id { get; set; }
 		public string HostName { get; set; }
-		public string LogLines { get; set; }
 		public DateOnly? Date { get; set; }
-		public List<SelectListItem> ServerSelectList { get; set; }
+        public bool Highlight { get; set; }
+        public List<SelectListItem> ServerSelectList { get; set; }
 	}
 }
 

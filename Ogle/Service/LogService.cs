@@ -4,7 +4,10 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Extensions.FileSystemGlobbing;
+using Microsoft.Extensions.FileSystemGlobbing.Internal;
 using Microsoft.Extensions.Options;
 
 namespace Ogle
@@ -288,6 +291,62 @@ namespace Ogle
             }
 
             return sb.ToString();
+        }
+
+        public string HighlightLogContent(string content, string searchTerm)
+        {
+            var props = typeof(TRecord).GetProperties();
+            var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
+                                                    .Single(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+            var patterns = props.Where(i => i.GetCustomAttributes(true)
+                                             .Any(j => j is LogPatternAttribute))
+                                .Select(i => i.GetCustomAttributes(true)
+                                              .Single(j => j is LogPatternAttribute) as LogPatternAttribute)
+                                .Select(i => i.Regex);
+            var sb = new StringBuilder();
+
+            foreach(var line in content.Replace("\r\n", "\n").Split(new[] { '\r', '\n' }))
+            {
+                var highlightedLine = line;
+                var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
+
+                highlightedLine = HighlightMatch(highlightedLine, mandatoryMatch);
+
+                foreach (var pattern in patterns)
+                {
+                    var match = pattern.Match(line);
+
+                    highlightedLine = HighlightMatch(highlightedLine, match);
+                }
+
+                sb.AppendLine(highlightedLine);
+            }
+            content = sb.ToString().Replace(searchTerm, $"<span class=\"highlight\">{searchTerm}</span>");
+
+            return content;
+        }
+
+        private string HighlightMatch(string line, Match match)
+        {
+            if (match.Success)
+            {
+                if (match.Groups.Count == 1)
+                {
+                    line = line.Replace(match.Value, $"<span class=\"patternMatch\">{match.Value}</span>");
+                }
+                else 
+                {
+                    var highlightedMatch = match.Groups[0].Value;
+
+                    for (var i = 1; i < match.Groups.Count; i++)
+                    {
+                        highlightedMatch = highlightedMatch.Replace(match.Groups[i].Value, $"<span class=\"patternMatch\">{match.Groups[i].Value}</span>");
+                    }
+                    line = line.Replace(match.Groups[0].Value, highlightedMatch);
+                }
+            }
+
+            return line;
         }
 
         public IEnumerable<string> GetLogFilenames(DateOnly? date)

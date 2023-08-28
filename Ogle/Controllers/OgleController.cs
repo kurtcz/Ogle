@@ -39,7 +39,7 @@ namespace Ogle
         [Route("/ogle/")]
         [Route("/ogle/Logs")]
         [Route("/ogle/Index")]
-        public IActionResult Index(string? id, string? hostName, DateTime? date)
+        public IActionResult Index(string? id, string? hostName, DateTime? date, bool highlight = true)
 		{
 			date ??= DateTime.Today.AddDays(-1);
             try
@@ -50,6 +50,7 @@ namespace Ogle
 					Id = id,
 					Date = DateOnly.FromDateTime(date.Value),
 					HostName = hostName,
+					Highlight = highlight,
 					ServerSelectList = _settings.CurrentValue.Hostnames.Select(i => new SelectListItem
 					{
 						Text = i,
@@ -97,7 +98,7 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/GetLogs")]
-        public async Task<IActionResult> GetLogs(DateTime? date, string id)
+        public async Task<IActionResult> GetLogs(DateTime? date, string id, bool highlight = true)
 		{
             try
             {
@@ -124,7 +125,11 @@ namespace Ogle
 					{
 						result = $"Request id or search term not found in logs for {date:yyyy-MM-dd}";
 					}
-				}
+					else if (highlight)
+					{
+                        result = (string)logService.HighlightLogContent(result, id);
+                    }
+                }
 
 				return Content(result);
             }
