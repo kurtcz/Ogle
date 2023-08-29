@@ -27,6 +27,7 @@
     #logsContainer {
         margin-top: 10px;
         overflow: hidden;
+        word-break: break-all;
         white-space: pre;
         max-height: 80vh;
     }
@@ -52,13 +53,37 @@
         font-size: 0.9em !important;
     }
 
-    .highlight {
-        background-color: yellow;
+    :not(.patternMatchValue) > .highlight {
         color: black;
     }
 
+    .highlight {
+        background-color: yellow;
+    }
+
+    .noMatch {
+        font-style: italic;
+    }
+
     .patternMatch {
+        border: 1px dotted transparent;
+    }
+
+    .patternMatch:hover {
+        border: 1px dotted;
+    }
+
+    .patternMatchValue {
         font-weight: bold;
+    }
+
+    .errorMatch > .patternMatchValue {
+        font-style: italic;
+        background-color: firebrick;
+        color: white;
+    }
+
+    :not(.errorMatch) > .patternMatchValue {
         color: firebrick;
     }
 

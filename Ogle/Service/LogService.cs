@@ -6,8 +6,6 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.Extensions.FileSystemGlobbing;
-using Microsoft.Extensions.FileSystemGlobbing.Internal;
 using Microsoft.Extensions.Options;
 
 namespace Ogle
@@ -301,8 +299,7 @@ namespace Ogle
             var patterns = props.Where(i => i.GetCustomAttributes(true)
                                              .Any(j => j is LogPatternAttribute))
                                 .Select(i => i.GetCustomAttributes(true)
-                                              .Single(j => j is LogPatternAttribute) as LogPatternAttribute)
-                                .Select(i => i.Regex);
+                                              .Single(j => j is LogPatternAttribute) as LogPatternAttribute);
             var sb = new StringBuilder();
 
             foreach(var line in content.Replace("\r\n", "\n").Split(new[] { '\r', '\n' }))
@@ -310,13 +307,26 @@ namespace Ogle
                 var highlightedLine = line;
                 var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
 
-                highlightedLine = HighlightMatch(highlightedLine, mandatoryMatch);
-
-                foreach (var pattern in patterns)
+                if (mandatoryMatch.Success)
                 {
-                    var match = pattern.Match(line);
+                    highlightedLine = HighlightMatch(highlightedLine, mandatoryMatch);
 
-                    highlightedLine = HighlightMatch(highlightedLine, match);
+                    foreach (var pattern in patterns)
+                    {
+                        //string.Contains is a fast pre-check
+                        if (line.Contains(pattern.Filter))
+                        {
+                            //if pre-check suceeded try a regex match
+                            var match = pattern.Regex.Match(line);
+
+                            var @class = pattern is ErrorLogPatternAttribute ? "errorMatch" : "patternMatch";
+                            highlightedLine = HighlightMatch(highlightedLine, match, @class);
+                        }
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(highlightedLine))
+                {
+                    highlightedLine = $"<span class=\"noMatch\">{highlightedLine}</span>";
                 }
 
                 sb.AppendLine(highlightedLine);
@@ -326,23 +336,25 @@ namespace Ogle
             return content;
         }
 
-        private string HighlightMatch(string line, Match match)
+        private string HighlightMatch(string line, Match match, string @class = null)
         {
             if (match.Success)
             {
+                @class ??= "patternMatch";
+
                 if (match.Groups.Count == 1)
                 {
-                    line = line.Replace(match.Value, $"<span class=\"patternMatch\">{match.Value}</span>");
+                    line = line.Replace(match.Value, $"<span class=\"{@class}\"><span class=\"patternMatchValue\">{match.Value}</span></span>");
                 }
                 else 
                 {
-                    var highlightedMatch = match.Groups[0].Value;
+                    var highlightedMatch = match.Value;
 
                     for (var i = 1; i < match.Groups.Count; i++)
                     {
-                        highlightedMatch = highlightedMatch.Replace(match.Groups[i].Value, $"<span class=\"patternMatch\">{match.Groups[i].Value}</span>");
+                        highlightedMatch = highlightedMatch.Replace(match.Groups[i].Value, $"<span class=\"patternMatchValue\">{match.Groups[i].Value}</span>");
                     }
-                    line = line.Replace(match.Groups[0].Value, highlightedMatch);
+                    line = line.Replace(match.Value, $"<span class=\"{@class}\">{highlightedMatch}</span>");
                 }
             }
 

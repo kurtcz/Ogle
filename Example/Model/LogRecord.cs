@@ -14,11 +14,17 @@ namespace Example.Model
 		[LogPattern("Found", @"Found\ (\d+)\ \S+\ in\ the\ database")]
 		public int Items { get; set; }
 
-        [LogPattern("Returning", @"Returning\ 2\d{2}")]
+        [LogPattern("Returning", @"Returning\ (2\d{2}\ \S+)")]
         public bool Succeeded { get; set; }
+
+        [LogPattern("Returning", @"Returning\ ([^2]\d{2}\ \S+)")]
+        public bool Failed { get; set; }
 
         [LogPattern("completed", @"Request\ completed\ in\ (\d{2}\:\d{2}\:\d{2}\.\d{3})", @"hh\:mm\:ss\.fff")]
         public TimeSpan Duration { get; set; }
+
+		[ErrorLogPattern("ERR", @"\ ([^;]+)$")]
+		public string Error { get; set; }
 	}
 }
 
