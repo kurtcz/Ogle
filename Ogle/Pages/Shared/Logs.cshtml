@@ -53,6 +53,28 @@
         font-size: 0.9em !important;
     }
 
+    .browseFilesContainer {
+        max-width: 62%;
+/*        margin: auto;*/
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+    }
+
+    .browseFilesContainer > pre::first-line {
+        font-weight: bold;
+    }
+
+    .browseFilesContainer > pre:first-of-type::before {
+        content: " ";
+        position: absolute;
+        border-bottom: 1px solid;
+        width: 62%;
+        height: 1.4em;
+    }
+    .browseFilesContainer > pre:last-of-type {
+        text-align: right;
+    }
+
     :not(.patternMatchValue) > .highlight {
         color: black;
     }
@@ -187,7 +209,7 @@
     </form>
 </div>
 <div id="loader" class="loader"></div>
-<pre id="logsContainer"></pre>
+<div id="logsContainer"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
 <script>
@@ -259,19 +281,8 @@
         $('#loader').show();
 
         var requests = [];
-        @{
-            @Html.Raw("\n\t\t\tvar hostname=$(\"#hostname\").val();\n");
+        requests.push(updateDataForServer('GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + $('#id').val() + '&highlight={Model.Highlight}&rand=' + getRandomInt(1000)));
 
-            foreach(var serverUrl in Model.ServerSelectList)
-            {
-                var serverName = serverUrl.Text;
-
-                @Html.Raw($"\t\t\tif (!hostname || hostname == '' || hostname == '{serverName}')\n");
-                @Html.Raw("\t\t\t{\n");
-                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}{Model.RoutePrefix}/GetLogs?date=' + $(\"#date\").val() + '&id=' + $(\"#id\").val() + '&highlight={Model.Highlight}&rand=' + getRandomInt(1000)));\n");
-                @Html.Raw("\t\t\t}\n");
-            }
-        }
         $.when.apply($, requests).done(function () {
             $('#loader').hide();
         });

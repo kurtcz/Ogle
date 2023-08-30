@@ -74,20 +74,39 @@ namespace Ogle
             try
             {
                 dynamic logService = LogServiceFactory.CreateInstance(_settings);
-				var sb = new StringBuilder("<pre>\n<b>Filename\t\t\t\tLast write time:\t\tFile size</b>\n");
-				DateOnly? dateOnly = date.HasValue ? DateOnly.FromDateTime(date.Value) : null;
 
-				foreach(var path in logService.GetLogFilenames(dateOnly))
+				var sb = new StringBuilder();
+                var fileNames = new StringBuilder();
+                var fileDates = new StringBuilder();
+                var fileSizes = new StringBuilder();
+                DateOnly? dateOnly = date.HasValue ? DateOnly.FromDateTime(date.Value) : null;
+
+				sb.AppendLine("<div class=\"browseFilesContainer\">");
+				fileNames.AppendLine("<pre>");
+                fileDates.AppendLine("<pre>");
+                fileSizes.AppendLine("<pre>");
+                fileNames.AppendLine("Filename");
+                fileDates.AppendLine("Last write time");
+                fileSizes.AppendLine("File size");
+                foreach (var path in logService.GetLogFilenames(dateOnly))
 				{
 					var fi = new FileInfo(path);
 					var filename = Path.GetFileName(path);
 					var url = Url.Action("DownloadLog", "ogle", new { log = filename }, Request.Scheme, Request.Host.ToUriComponent());
 
-					sb.Append($"<a href=\"{url}\">{filename}</a>\t\t{fi.LastWriteTime}\t{fi.Length,12:N0}\n");
+					fileNames.AppendLine($"<a href=\"{url}\">{filename}</a>");
+                    fileDates.AppendLine(fi.LastWriteTime.ToString());
+					fileSizes.AppendLine($"{fi.Length:N0} bytes");
 				}
-				sb.Append("</pre>\n");
+                fileNames.AppendLine("</pre>");
+                fileDates.AppendLine("</pre>");
+                fileSizes.AppendLine("</pre>");
+				sb.AppendLine(fileNames.ToString());
+                sb.AppendLine(fileDates.ToString());
+                sb.AppendLine(fileSizes.ToString());
+                sb.AppendLine("</div>\n");
 
-				return Content(sb.ToString(), "text/html");
+                return Content(sb.ToString(), "text/html");
             }
             catch (Exception ex)
             {
@@ -109,11 +128,11 @@ namespace Ogle
 				
 				if(id == null)
 				{
-					result = "Please specify a request id or a unique search term";
+					return BadRequest();
 				}
 				else if(!searchPatternMatch.Success)
 				{
-                    result = $"Search term has to match {_settings.CurrentValue.AllowedSearchPattern} regular expresion pattern";
+                    return BadRequest();
                 }
 				else
 				{
@@ -123,7 +142,7 @@ namespace Ogle
 
 					if (string.IsNullOrEmpty(result))
 					{
-						result = $"Request id or search term not found in logs for {date:yyyy-MM-dd}";
+						return NotFound();
 					}
 					else if (highlight)
 					{
@@ -131,13 +150,71 @@ namespace Ogle
                     }
                 }
 
-				return Content(result);
+				return Content($"<pre>\n{result}</pre>\n");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
                 throw;
             }
+        }
+
+		[HttpGet]
+		[Route("/ogle/GetLogsFromAllServers")]
+		public async Task<IActionResult> GetLogsFromAllServers(DateTime? date, string hostname, string id, bool highlight = true)
+		{
+			try
+			{
+                date ??= DateTime.Today.AddDays(-1);
+
+                var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
+                string result;
+
+				if (id == null)
+				{
+					result = "Please specify a request id or a unique search term";
+				}
+				else if (!searchPatternMatch.Success)
+				{
+					result = $"Search term has to match {_settings.CurrentValue.AllowedSearchPattern} regular expresion pattern";
+				}
+				else
+				{
+					var endpoint = $"/{GetRoutePrefix()}/GetLogs?date={date.Value.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
+					var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
+
+					if (responses.All(i => i.Value.Error != null))
+					{
+						result = string.Join("\n", responses.Values.Select(i => i.Error));
+
+						if (string.IsNullOrWhiteSpace(result))
+						{
+							result = $"Search failed for {date:yyyy-MM-dd}";
+                        }
+
+                        return Problem($"<pre>{result}</pre>");
+					}
+					else
+					{
+						result = string.Join("\n", responses.Where(i => i.Value.Error == null &&
+																		!string.IsNullOrWhiteSpace(i.Value.Payload))
+															.Select(i => i.Value.Payload));
+                        if (string.IsNullOrEmpty(result))
+                        {
+                            result = $"Request id or search term not found in logs for {date:yyyy-MM-dd}";
+                        }
+
+                        return Content(result);	//server responses already contain <pre> containers
+					}
+				}
+
+                return Content($"<pre>{result}</pre>");
+            }
+            catch (Exception ex)
+			{
+				_logger.LogError(ex, ex.Message);
+				throw;
+			}
         }
 
         [HttpGet]
@@ -316,7 +393,7 @@ namespace Ogle
 				}
 
 				var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
-                var responses = await CollateJsonResponsesFromServers(endpoint);
+                var responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
                 if (responses.All(i => i.Value.Error != null))
                 {
@@ -362,7 +439,7 @@ namespace Ogle
                 //1st save metrics using default groupping
                 var numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets;
                 var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DefaultMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
-                var responses = await CollateJsonResponsesFromServers(endpoint);
+                var responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
                 if (responses.All(i => i.Value.Error != null))
                 {
@@ -372,13 +449,13 @@ namespace Ogle
                 {
                     var rowsSaved = 0L;
                     var metrics = responses.Where(i => i.Value.Error == null)
-                                       .SelectMany(i => i.Value.Payload)
-                                       .ToArray();
+										   .SelectMany(i => i.Value.Payload)
+										   .ToArray();
 
                     //2nd save metrics using detailed groupping
                     numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets * _settings.CurrentValue.DrillDownNumberOfBuckets;
                     endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
-                    responses = await CollateJsonResponsesFromServers(endpoint);
+                    responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
                     if (responses.All(i => i.Value.Error != null))
                     {
@@ -492,10 +569,15 @@ namespace Ogle
 			return infoUrlBuilder;
 		}
 
-        private async Task<Dictionary<string, NodeResponse<IEnumerable<object>>>> CollateJsonResponsesFromServers(string urlPath)
+        private async Task<Dictionary<string, NodeResponse<TServerResponse>>> CollateJsonResponsesFromServers<TServerResponse>(string urlPath)
 		{
-			var hostnames = _settings.CurrentValue.Hostnames;
-			var result = new ConcurrentBag<(string, NodeResponse<IEnumerable<object>>)>();
+			return await CollateJsonResponsesFromServers<TServerResponse>(null, urlPath);
+        }
+
+		private async Task<Dictionary<string, NodeResponse<TServerResponse>>> CollateJsonResponsesFromServers<TServerResponse>(string? hostname, string urlPath)
+        {
+			var hostnames = string.IsNullOrEmpty(hostname) ? _settings.CurrentValue.Hostnames : new[] { hostname };
+			var result = new ConcurrentBag<(string, NodeResponse<TServerResponse>)>();
 			var tasks = hostnames.Select(async hostname =>
 			{
 				UriBuilder infoUrlBuilder = GetHostnameUrl(Request.Scheme, hostname, urlPath);
@@ -508,9 +590,8 @@ namespace Ogle
                 };
 
 				string responseContent;
-                IEnumerable<object> serverResponse;
-				NodeResponse<IEnumerable<object>> responseWrapper;
-				var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                TServerResponse serverResponse;
+				NodeResponse<TServerResponse> responseWrapper;
 
 				try
 				{
@@ -518,11 +599,19 @@ namespace Ogle
 					var type = typeof(IEnumerable<>).MakeGenericType(new[] { _settings.CurrentValue.MetricsType });
 
                     responseContent = await response.Content.ReadAsStringAsync();
-					options.Converters.Add(new JsonTimeSpanConverter());
-                    //serverResponse = ConvertResponseToMetricsType(JsonSerializer.Deserialize(responseContent, type, options));
-                    serverResponse = (IEnumerable<object>)JsonSerializer.Deserialize(responseContent, type, options);
-                    //serverResponse = JsonSerializer.Deserialize<IEnumerable<object>>(responseContent, options);
-                    responseWrapper = new NodeResponse<IEnumerable<object>>
+					if (typeof(TServerResponse) == typeof(string))
+					{
+                        serverResponse = (TServerResponse)(object)responseContent;
+                    }
+                	else
+					{
+						var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+						options.Converters.Add(new JsonTimeSpanConverter());
+						serverResponse = (TServerResponse)JsonSerializer.Deserialize(responseContent, type, options);
+					}
+
+                    responseWrapper = new NodeResponse<TServerResponse>
 					{
 						Payload = serverResponse
 					};
@@ -531,7 +620,7 @@ namespace Ogle
 				{
                     var hre = ex as HttpRequestException;
 
-                    responseWrapper = new NodeResponse<IEnumerable<object>>
+                    responseWrapper = new NodeResponse<TServerResponse>
                     {
                         Error = $"Endpoint {actualServerUrl} returned an error {hre?.StatusCode?.ToString() ?? string.Empty}: {ex.Message}"
                     };

@@ -52,7 +52,7 @@ namespace Example
             builder.Services.AddControllers(options =>
             {
                 //Uncomment the following line to change the default route prefix
-                //options.UseOgleRoutePrefix("/custom-prefix");
+                //options.UseOgleRoutePrefix("/a/b");
 
                 //Uncomment the following line to assign custom authorization policy to a specific action
                 //options.AddOgleAuthorizationPolicy("SaveMetricsFromAllServers", "Admin");
