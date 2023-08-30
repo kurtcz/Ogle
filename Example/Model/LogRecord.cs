@@ -23,7 +23,10 @@ namespace Example.Model
         [LogPattern("completed", @"Request\ completed\ in\ (\d{2}\:\d{2}\:\d{2}\.\d{3})", @"hh\:mm\:ss\.fff")]
         public TimeSpan Duration { get; set; }
 
-		[ErrorLogPattern("ERR", @"\ ([^;]+)$")]
+        [WarningLogPattern("WRN", @"\ ([^;]+)$")]
+        public string Warning { get; set; }
+
+        [ErrorLogPattern("ERR", @"\ ([^;]+)$")]
 		public string Error { get; set; }
 	}
 }

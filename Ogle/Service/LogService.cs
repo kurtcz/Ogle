@@ -309,9 +309,10 @@ namespace Ogle
 
                 if (mandatoryMatch.Success)
                 {
-                    highlightedLine = HighlightMatch(highlightedLine, mandatoryMatch);
+                    highlightedLine = HighlightMatch(highlightedLine, mandatoryMatch, "mandatory patternMatch");
 
-                    foreach (var pattern in patterns)
+                    foreach (var pattern in patterns.OrderBy(i => i is ErrorLogPatternAttribute ? 0 : 1)
+                                                    .ThenBy(i => i is WarningLogPatternAttribute ? 0 : 1))
                     {
                         //string.Contains is a fast pre-check
                         if (line.Contains(pattern.Filter))
@@ -319,7 +320,11 @@ namespace Ogle
                             //if pre-check suceeded try a regex match
                             var match = pattern.Regex.Match(line);
 
-                            var @class = pattern is ErrorLogPatternAttribute ? "errorMatch" : "patternMatch";
+                            var @class = pattern is ErrorLogPatternAttribute
+                                         ? "errorMatch"
+                                         : pattern is WarningLogPatternAttribute
+                                           ? "warningMatch"
+                                           : null;
                             highlightedLine = HighlightMatch(highlightedLine, match, @class);
                         }
                     }

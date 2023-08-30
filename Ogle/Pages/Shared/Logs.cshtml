@@ -73,18 +73,48 @@
         border: 1px dotted;
     }
 
-    .patternMatchValue {
+    :not(.errorMatch):not(.warningMatch) > .patternMatchValue {
         font-weight: bold;
     }
 
-    .errorMatch > .patternMatchValue {
-        font-style: italic;
-        background-color: firebrick;
-        color: white;
+    @@media (prefers-color-scheme: light) {
+        .errorMatch > .patternMatchValue {
+            background-color: firebrick;
+            color: white;
+        }
+
+        .warningMatch > .patternMatchValue {
+            background-color: orange;
+            color: black;
+        }
+
+        .patternMatch > .patternMatchValue {
+            color: firebrick;
+        }
+
+        .mandatory.patternMatch > .patternMatchValue {
+            color: #4070d0;
+        }
     }
 
-    :not(.errorMatch) > .patternMatchValue {
-        color: firebrick;
+    @@media (prefers-color-scheme: dark) {
+        .errorMatch > .patternMatchValue {
+            background-color: #ff3030;
+            color: white;
+        }
+
+        .warningMatch > .patternMatchValue {
+            background-color: orange;
+            color: black;
+        }
+
+        .patternMatch > .patternMatchValue {
+            color: #ff3030;
+        }
+
+        .mandatory.patternMatch > .patternMatchValue {
+            color: #4080ff;
+        }
     }
 
     select option {
