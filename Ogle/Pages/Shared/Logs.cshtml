@@ -24,6 +24,37 @@
         font-size: smaller;
     }
 
+
+    #errorContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background-color: #ffdddd;
+        color: red;
+        border: 2px solid red;
+        display: none;
+        z-index: 1000;
+        opacity: 0.9;
+    }
+
+    .closeButton {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 21px;
+        height: 21px;
+        font-size: 32px;
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 0.5;
+        scale: 0.6;
+        cursor: pointer;
+    }
+
+    .errorMessage {
+        margin: 5px 20px 5px 20px;
+    }
+
     #logsContainer {
         margin-top: 10px;
         overflow: hidden;
@@ -55,25 +86,26 @@
 
     .browseFilesContainer {
         max-width: 62%;
-/*        margin: auto;*/
+        /*        margin: auto;*/
         display: grid;
         grid-template-columns: 2fr 1fr 1fr;
     }
 
-    .browseFilesContainer > pre::first-line {
-        font-weight: bold;
-    }
+        .browseFilesContainer > pre::first-line {
+            font-weight: bold;
+        }
 
-    .browseFilesContainer > pre:first-of-type::before {
-        content: " ";
-        position: absolute;
-        border-bottom: 1px solid;
-        width: 62%;
-        height: 1.4em;
-    }
-    .browseFilesContainer > pre:last-of-type {
-        text-align: right;
-    }
+        .browseFilesContainer > pre:first-of-type::before {
+            content: " ";
+            position: absolute;
+            border-bottom: 1px solid;
+            width: 62%;
+            height: 1.4em;
+        }
+
+        .browseFilesContainer > pre:last-of-type {
+            text-align: right;
+        }
 
     :not(.patternMatchValue) > .highlight {
         color: black;
@@ -91,9 +123,9 @@
         border: 1px dotted transparent;
     }
 
-    .patternMatch:hover {
-        border: 1px dotted;
-    }
+        .patternMatch:hover {
+            border: 1px dotted;
+        }
 
     :not(.errorMatch):not(.warningMatch) > .patternMatchValue {
         font-weight: bold;
@@ -143,9 +175,9 @@
         color: initial;
     }
 
-    select option[value=""] {
-        color: gray;
-    }
+        select option[value=""] {
+            color: gray;
+        }
 
     @@keyframes spin {
         0% {
@@ -174,6 +206,11 @@
         }
     }
 </style>
+
+<div id="errorContainer">
+    <div class="closeButton" onclick="$(this).parent().hide();">&times;</div>
+    <div class="errorMessage"></div>
+</div>
 
 <picture>
     <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
@@ -341,5 +378,16 @@
         $('select,#date').change(function () {
             $(this).setColorBasedOnValue();
         });
+    });
+
+    $(document).on('ajaxError', function (event, request, ajaxSettings, errorMessage) {
+        var message = "(null)";
+
+        if (request.responseJSON && request.responseJSON.detail) {
+            message = request.responseJSON.detail.replace("\n", "\n<br />\n");
+        }
+        $('#errorContainer .errorMessage').html('Error ' + request.status + ' received from ' + ajaxSettings.url + '\n<br />\n' + message);
+        $('#errorContainer').show();
+        $('#loader').hide();
     });
 </script>

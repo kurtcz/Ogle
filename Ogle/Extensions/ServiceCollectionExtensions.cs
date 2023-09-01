@@ -20,7 +20,7 @@ namespace Ogle
 						options.LogParserTimeout = TimeSpan.FromSeconds(300);
 						options.AllowedSearchPattern = @"\S+";
 						options.LogReaderBackBufferCapacity = 64;
-						options.MetricsButtonsPosition = MetricsButtonsPosition.Center;
+						options.MetricsButtonsPosition = MetricsButtonsPosition.Bottom;
                         options.FilterControlsPosition = FilterControlsPosition.Left;
                         options.DatasetColors = new[]
 						{

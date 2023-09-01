@@ -65,7 +65,7 @@ namespace Ogle
                 _logger.LogError(ex, ex.Message);
                 throw;
             }
-		}
+        }
 
 		[HttpGet]
         [Route("/ogle/BrowseLogFiles")]
@@ -213,8 +213,8 @@ namespace Ogle
             catch (Exception ex)
 			{
 				_logger.LogError(ex, ex.Message);
-				throw;
-			}
+                throw;
+            }
         }
 
         [HttpGet]
@@ -373,6 +373,7 @@ namespace Ogle
 		{
             try
             {
+                throw new Exception("msg");
                 date ??= DateTime.Today.AddDays(-1);
 
                 options.Date ??= DateOnly.FromDateTime(date.Value);
@@ -413,7 +414,7 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+				throw;
             }
         }
 
@@ -486,13 +487,18 @@ namespace Ogle
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, ex.Message);
-				throw;
-			}
+                throw;
+            }
         }
 
         #endregion
 
         #region Private methods
+
+		private IActionResult FormatErrorResponse(Exception ex, int? statusCode = null)
+		{
+            return Problem($"{ex.Message}\n{ex.StackTrace}", statusCode: statusCode, title: ex.Message, type: ex.GetType().ToString());
+        }
 
 		private string GetRoutePrefix()
 		{

@@ -23,6 +23,36 @@
         font-size: smaller;
     }
 
+    #errorContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background-color: #ffdddd;
+        color: red;
+        border: 2px solid red;
+        display: none;
+        z-index: 1000;
+        opacity: 0.9;
+    }
+
+    .closeButton {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 21px;
+        height: 21px;
+        font-size: 32px;
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 0.5;
+        scale: 0.6;
+        cursor: pointer;
+    }
+
+    .errorMessage {
+        margin: 5px 20px 5px 20px;
+    }
+
     #logo {
         float: right;
         width: 112px;
@@ -158,6 +188,10 @@
 </style>
 
 <div id="ogleContainer">
+    <div id="errorContainer">
+        <div class="closeButton" onclick="$(this).parent().hide();">&times;</div>
+        <div class="errorMessage"></div>
+    </div>
     <picture>
         <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
         <source media="(prefers-color-scheme: light)" srcset="~/_content/Ogle/images/ogle.svg" />
@@ -501,6 +535,19 @@
 
     $(document).ready(function () {
         $('.viewButtonsContainer input[type=button]')[0].click();
+    });
+    $(document).on('ajaxError', function (event, request, ajaxSettings, errorMessage) {
+        var message = request.responseText || "(null)";
+
+        if (request.responseJSON && request.responseJSON.detail) {
+            message = request.responseJSON.detail;
+        }
+        message = $('#errorContainer .errorMessage').text(message).html();
+        message = message.replaceAll("\n", "\n<br />\n");
+
+        $('#errorContainer .errorMessage').html('Error ' + request.status + ' received from ' + ajaxSettings.url + '\n<br />\n' + message);
+        $('#errorContainer').show();
+        $('#loader').hide();
     });
 
     function onViewButtonClick(event) {
