@@ -320,6 +320,7 @@ namespace Ogle
 					NumberOfBuckets = options.NumberOfBuckets.Value,
 					DrillDownMinutesPerBucket = _settings.CurrentValue.DrillDownMinutesPerBucket,
 					DrillDownNumberOfBuckets = _settings.CurrentValue.DrillDownNumberOfBuckets,
+					ViewButtonsPosition = _settings.CurrentValue.MetricsButtonsPosition,
 					AutoFetchData = autoFetchData,
 					CanDrillDown = canDrillDown,
 					KeyProperties = keyProps.Select(i => i.LowerCaseFirstCharacter()).ToArray(),

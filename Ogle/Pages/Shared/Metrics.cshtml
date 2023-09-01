@@ -18,41 +18,56 @@
         }
     }
 
-    #logo {
-        float: right;
-        width: 112px;
-        height: auto;
-        margin-block: -5px;
-        filter: grayscale(100%);
-    }
     .container {
         max-width: initial !important;
         font-size: smaller;
     }
 
-    #chartModesContainer {
-        position: absolute;
+    #logo {
+        float: right;
+        width: 112px;
         right: 0;
-        margin-top: 5px;
-        margin-right: 10px;
+        margin-top: -15px;
+    }
+
+    .mainGrid {
+        clear: both;
+        display: grid;
+        grid-template-columns: 1fr 3fr 1fr;
+        grid-gap: 10px;
+    }
+
+    .top, .bottom {
+        grid-column: span 3;
+    }
+
+    #dateContainer {
+        float: left;
+    }
+
+    #chartModesContainer {
+        float: right;
     }
 
     #filterContainer {
-        position:absolute;
-        right: 0;
-        display: none;
-        margin-top: 10px;
     }
 
     #filterContainer select {
         width: 100%;
     }
 
+    #viewButtonsLeftContainer > * {
+        width: 100%;
+    }
+
     #viewButtonsContainer {
         margin: auto;
         margin-top: 10px;
-        max-width: 62%;
         text-align: center;
+    }
+
+    #viewButtonsContainer input {
+        margin-top: 4px;
     }
 
     #chartLabel {
@@ -61,7 +76,6 @@
     }
 
     #canvas {
-        max-width: 62%;
         margin: auto;
         display: block;
     }
@@ -142,69 +156,97 @@
     }
 </style>
 
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="~/_content/Ogle/images/ogle.svg" />
-    <img id="logo" src="~/_content/Ogle/images/ogle.svg" />
-</picture>
-<h2>@(ViewBag.Title)</h2>
+<div id="ogleContainer">
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
+        <source media="(prefers-color-scheme: light)" srcset="~/_content/Ogle/images/ogle.svg" />
+        <img id="logo" src="~/_content/Ogle/images/ogle.svg" />
+    </picture>
 
-<div id="chartModesContainer">
-    <div>
-        @{
-            var i = 0;
-            foreach (var prop in Model.KeyProperties)
-            {
-                if (prop != Model.TimeBucketProperty)
-                {
-                    <input type="button" id="@($"chartMode-{prop}")" value="Group by @(Model.KeyPropertyDisplayNames[i].ToLower())" onclick="chartMode = '@prop'; showMetrics();" />
+    <h2>@(ViewBag.Title)</h2>
+
+    <div class="mainGrid">
+        <div class="top">
+            <div id="dateContainer">
+                <form onsubmit="getMetrics(); return false;">
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" value="@Model.Date.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <input type="submit" id="showButton" value="Fetch metrics" onclick="getMetrics(); return false;" />
+                </form>
+            </div>
+            <div id="chartModesContainer">
+                @{
+                    var i = 0;
+                    foreach (var prop in Model.KeyProperties)
+                    {
+                        if (prop != Model.TimeBucketProperty)
+                        {
+                            <input type="button" id="@($"chartMode-{prop}")" value="Group by @(Model.KeyPropertyDisplayNames[i].ToLower())" onclick="chartMode = '@prop'; showMetrics();" />
+                        }
+                        i++;
+                    }
                 }
-                i++;
-            }
-        }
-    </div>
-    <div id="filterContainer">
-        <br />
-        <h6>Filter:</h6>
-        @{
-            i = 0;
-            foreach (var prop in Model.KeyProperties)
-            {
-                if (prop != Model.TimeBucketProperty)
+            </div>
+        </div>
+        <div class="left">
+            <div id="viewButtonsLeftContainer" class="viewButtonsContainer">
+            @{
+                if (Model.ViewButtonsPosition == MetricsButtonsPosition.Left)
                 {
-                    @Model.KeyPropertyDisplayNames[i] <br />
-                    <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
-                        <option selected="selected">All</option>
-                    </select> <br />
+                    i = 0;
+                    foreach (var prop in Model.ValueProperties)
+                    {
+                        <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                        i++;
+                    }
                 }
-                i++;
             }
-        }
+            </div>
+        </div>
+        <div class="main">
+            <div id="chartContainer">
+                <h4 id="chartLabel"></h4>
+                <div id="loader" class="loader"></div>
+                <canvas id="canvas"></canvas>
+            </div>
+            <div id="viewButtonsContainer" class="viewButtonsContainer">
+            @{
+                if (Model.ViewButtonsPosition == MetricsButtonsPosition.Center)
+                {
+                    i = 0;
+                    foreach (var prop in Model.ValueProperties)
+                    {
+                        <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                        i++;
+                    }
+                }
+            }
+            </div>
+        </div>
+        <div class="right">
+            <div id="filterContainer">
+                <h6>Filter:</h6>
+                @{
+                    i = 0;
+                    foreach (var prop in Model.KeyProperties)
+                    {
+                        if (prop != Model.TimeBucketProperty)
+                        {
+                            @Model.KeyPropertyDisplayNames[i] <br />
+                            <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
+                                <option selected="selected">All</option>
+                            </select> <br />
+                        }
+                        i++;
+                    }
+                }
+            </div>
+        </div>
+        <div class="bottom">
+            <div id="dataTable"></div>
+        </div>
     </div>
 </div>
-<div>
-    <form onsubmit="getMetrics(); return false;">
-        <label for="date">Date:</label>
-        <input type="date" id="date" value="@Model.Date.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
-        <input type="submit" id="showButton" value="Fetch metrics" onclick="getMetrics(); return false;" />
-    </form>
-</div>
-<div>
-    <h4 id="chartLabel"></h4>
-    <div id="loader" class="loader"></div>
-    <canvas id="canvas"></canvas>
-</div>
-<div id="viewButtonsContainer">
-    @{
-        i = 0;
-        foreach (var prop in Model.ValueProperties)
-        {
-            <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
-            i++;
-        }
-    }
-</div>
-<div id="dataTable"></div>
 
 <script>
     function pad(num, size) {
@@ -408,14 +450,14 @@
     });
 
     $(document).ready(function () {
-        $('#viewButtonsContainer input[type=button]')[0].click();
+        $('.viewButtonsContainer input[type=button]')[0].click();
     });
 
     function onViewButtonClick(event) {
         var $viewButton = $(event.target);
 
         $('#chartLabel').text($viewButton.prop('value'));
-        $('#viewButtonsContainer input[type=button]').css('background-color', '');
+        $('.viewButtonsContainer input[type=button]').css('background-color', '');
         $viewButton.css('background-color', 'lightblue');
 
         activeTab = $viewButton.data('type');

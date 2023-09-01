@@ -11,6 +11,7 @@ namespace Ogle
         public string[] ValuePropertyTypes { get; set; }
         public string[] ValuePropertyDisplayNames { get; set; }
         public string[] ValuePropertyAggregationOperation { get; set; }
+        public MetricsButtonsPosition ViewButtonsPosition { get; set; }
         public string TotalProperty { get; set; }
         public string TimeBucketProperty { get; set; }
         public string[] TimeBuckets { get; set; }

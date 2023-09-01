@@ -14,6 +14,7 @@ namespace Ogle
         public int HttpsPort { get; set; }
 		public string[] Hostnames { get; set; }
 		public string[] DatasetColors { get; set; }
+		public MetricsButtonsPosition MetricsButtonsPosition { get; set; }
 		public int DefaultMinutesPerBucket { get; set; }
         public int DefaultNumberOfBuckets { get; set; }
         public int DrillDownMinutesPerBucket { get; set; }
