@@ -21,7 +21,8 @@ namespace Ogle
 						options.AllowedSearchPattern = @"\S+";
 						options.LogReaderBackBufferCapacity = 64;
 						options.MetricsButtonsPosition = MetricsButtonsPosition.Center;
-						options.DatasetColors = new[]
+                        options.FilterControlsPosition = FilterControlsPosition.Left;
+                        options.DatasetColors = new[]
 						{
 							"#cf2233",
 							"#f26946",

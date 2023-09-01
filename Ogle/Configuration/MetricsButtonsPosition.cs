@@ -3,7 +3,9 @@
 	public enum MetricsButtonsPosition
 	{
 		Left,
-		Center
+		Center,
+		Right,
+		Bottom
 	}
 }
 

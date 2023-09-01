@@ -33,12 +33,16 @@
     .mainGrid {
         clear: both;
         display: grid;
-        grid-template-columns: 1fr 3fr 1fr;
+        grid-template-columns: 1fr minmax(0, 3fr) 1fr;
         grid-gap: 10px;
     }
 
     .top, .bottom {
         grid-column: span 3;
+    }
+
+    .left > *, .right > * {
+        margin-bottom: 10px;
     }
 
     #dateContainer {
@@ -49,18 +53,15 @@
         float: right;
     }
 
-    #filterContainer {
-    }
-
-    #filterContainer select {
+    #filterContainer > * {
         width: 100%;
     }
 
-    #viewButtonsLeftContainer > * {
+    #viewButtonsLeftContainer > *, #viewButtonsRightContainer > * {
         width: 100%;
     }
 
-    #viewButtonsContainer {
+    #viewButtonsContainer, #viewButtonsBottomContainer {
         margin: auto;
         margin-top: 10px;
         text-align: center;
@@ -189,41 +190,8 @@
             </div>
         </div>
         <div class="left">
-            <div id="viewButtonsLeftContainer" class="viewButtonsContainer">
-            @{
-                if (Model.ViewButtonsPosition == MetricsButtonsPosition.Left)
-                {
-                    i = 0;
-                    foreach (var prop in Model.ValueProperties)
-                    {
-                        <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
-                        i++;
-                    }
-                }
-            }
-            </div>
-        </div>
-        <div class="main">
-            <div id="chartContainer">
-                <h4 id="chartLabel"></h4>
-                <div id="loader" class="loader"></div>
-                <canvas id="canvas"></canvas>
-            </div>
-            <div id="viewButtonsContainer" class="viewButtonsContainer">
-            @{
-                if (Model.ViewButtonsPosition == MetricsButtonsPosition.Center)
-                {
-                    i = 0;
-                    foreach (var prop in Model.ValueProperties)
-                    {
-                        <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
-                        i++;
-                    }
-                }
-            }
-            </div>
-        </div>
-        <div class="right">
+        @if (Model.FilterPosition == FilterControlsPosition.Left)
+        {
             <div id="filterContainer">
                 <h6>Filter:</h6>
                 @{
@@ -241,8 +209,90 @@
                     }
                 }
             </div>
+        }
+        @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Left)
+        {
+            <div id="viewButtonsLeftContainer" class="viewButtonsContainer">
+                @{
+                    i = 0;
+                    foreach (var prop in Model.ValueProperties)
+                    {
+                        <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                        i++;
+                    }
+                }
+            </div>
+        }
+        </div>
+        <div class="main">
+            <div id="chartContainer">
+                <h4 id="chartLabel"></h4>
+                <div id="loader" class="loader"></div>
+                <canvas id="canvas"></canvas>
+            </div>            
+        @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Center)
+        { 
+            <div id="viewButtonsContainer" class="viewButtonsContainer">
+            @{
+                i = 0;
+                foreach (var prop in Model.ValueProperties)
+                {
+                    <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                    i++;
+                }
+            }
+            </div>
+        }
+        </div>
+        <div class="right">
+        @if (Model.FilterPosition == FilterControlsPosition.Right)
+        {
+            <div id="filterContainer">
+            <h6>Filter:</h6>
+            @{
+                i = 0;
+                foreach (var prop in Model.KeyProperties)
+                {
+                    if (prop != Model.TimeBucketProperty)
+                    {
+                        @Model.KeyPropertyDisplayNames[i] <br />
+                        <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
+                            <option selected="selected">All</option>
+                        </select> <br />
+                    }
+                    i++;
+                }
+            }
+            </div>
+        }
+        @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Right)
+        {
+            <div id="viewButtonsRightContainer" class="viewButtonsContainer">
+            @{
+                i = 0;
+                foreach (var prop in Model.ValueProperties)
+                {
+                    <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                    i++;
+                }
+            }
+            </div>
+        }
         </div>
         <div class="bottom">
+            <div id="viewButtonsBottomContainer" class="viewButtonsContainer">
+            @{
+                if (Model.ViewButtonsPosition == MetricsButtonsPosition.Bottom)
+                {
+                    i = 0;
+                    foreach (var prop in Model.ValueProperties)
+                    {
+                        <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                        i++;
+                    }
+                }
+            }
+            </div>
             <div id="dataTable"></div>
         </div>
     </div>
