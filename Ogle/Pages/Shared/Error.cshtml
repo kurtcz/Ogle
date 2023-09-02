@@ -1,0 +1,44 @@
+﻿@using Ogle
+@model string
+@{
+    ViewBag.Title = "Invalid Ogle Configuration";
+}
+<style>
+    @@media (prefers-color-scheme: dark) {
+        body {
+            background-color: black;
+            color: white;
+        }
+    }
+
+    #logo {
+        float: right;
+        width: 112px;
+        height: auto;
+        margin-block: -5px;
+        filter: grayscale(100%);
+    }
+
+    #errorContainer {
+        margin-top: 20px;
+        background-color: #ffdddd;
+        color: red;
+        border: 2px solid red;
+    }
+
+    .errorMessage {
+        margin: 5px 20px 5px 20px;
+    }
+</style>
+
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="~/_content/Ogle/images/ogle.svg" />
+    <img id="logo" src="~/_content/Ogle/images/ogle.svg" />
+</picture>
+
+<h4>@(ViewBag.Title)</h4>
+
+<div id="errorContainer">
+    <div class="errorMessage">@Model</div>
+</div>

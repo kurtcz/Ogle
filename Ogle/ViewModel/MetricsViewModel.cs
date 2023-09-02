@@ -26,6 +26,7 @@ namespace Ogle
         public bool CanDrillDown { get; set; }
         public int DrillDownMinutesPerBucket { get; set; }
         public int DrillDownNumberOfBuckets { get; set; }
+        public string Error { get; set; }
     }
 }
 

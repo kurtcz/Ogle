@@ -19,11 +19,9 @@
         filter: grayscale(100%);
     }
 
-    .container {
-        max-width: initial !important;
+    #ogleContainer {
         font-size: smaller;
     }
-
 
     #errorContainer {
         position: absolute;
@@ -63,6 +61,14 @@
         max-height: 80vh;
     }
 
+    #msg {
+        display: none;
+        margin-top: 10px;
+        text-align: center;
+        border: 2px solid #4070d0;
+        background-color: lightyellow;
+    }
+
     #loader {
         display: none;
         position: absolute;
@@ -91,21 +97,21 @@
         grid-template-columns: 2fr 1fr 1fr;
     }
 
-        .browseFilesContainer > pre::first-line {
-            font-weight: bold;
-        }
+    .browseFilesContainer > pre::first-line {
+        font-weight: bold;
+    }
 
-        .browseFilesContainer > pre:first-of-type::before {
-            content: " ";
-            position: absolute;
-            border-bottom: 1px solid;
-            width: 62%;
-            height: 1.4em;
-        }
+    .browseFilesContainer > pre:first-of-type::before {
+        content: " ";
+        position: absolute;
+        border-bottom: 1px solid;
+        width: 62%;
+        height: 1.4em;
+    }
 
-        .browseFilesContainer > pre:last-of-type {
-            text-align: right;
-        }
+    .browseFilesContainer > pre:last-of-type {
+        text-align: right;
+    }
 
     :not(.patternMatchValue) > .highlight {
         color: black;
@@ -123,9 +129,9 @@
         border: 1px dotted transparent;
     }
 
-        .patternMatch:hover {
-            border: 1px dotted;
-        }
+    .patternMatch:hover {
+        border: 1px dotted;
+    }
 
     :not(.errorMatch):not(.warningMatch) > .patternMatchValue {
         font-weight: bold;
@@ -207,47 +213,49 @@
     }
 </style>
 
-<div id="errorContainer">
-    <div class="closeButton" onclick="$(this).parent().hide();">&times;</div>
-    <div class="errorMessage"></div>
-</div>
+<div id="ogleContainer">
+    <div id="errorContainer">
+        <div class="closeButton" onclick="$(this).parent().hide();">&times;</div>
+        <div class="errorMessage"></div>
+    </div>
 
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="~/_content/Ogle/images/ogle.svg" />
-    <img id="logo" src="~/_content/Ogle/images/ogle.svg" />
-</picture>
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
+        <source media="(prefers-color-scheme: light)" srcset="~/_content/Ogle/images/ogle.svg" />
+        <img id="logo" src="~/_content/Ogle/images/ogle.svg" />
+    </picture>
 
-<h2>@(ViewBag.Title) </h2>
+    <h2>@(ViewBag.Title)</h2>
 
-<div>
-    <form>
-        <label for="hostname">Date:</label>
-        <input type="date" id="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@Model.Date?.ToString("yyyy-MM-dd")" />
-        <select id="hostname">
-            @{
-                var defaultSelected = string.IsNullOrWhiteSpace(Model.HostName) ? " selected=\"selected\"" : string.Empty;
+    <div>
+        <form>
+            <label for="hostname">Date:</label>
+            <input type="date" id="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@Model.Date?.ToString("yyyy-MM-dd")" />
+            <select id="hostname">
+                @{
+                    var defaultSelected = string.IsNullOrWhiteSpace(Model.HostName) ? " selected=\"selected\"" : string.Empty;
 
-                @Html.Raw($"\t\t\t<option value=\"\"{defaultSelected}>Machine</option>\n");
+                    @Html.Raw($"\t\t\t<option value=\"\"{defaultSelected}>Machine</option>\n");
 
-                foreach (var serverUrl in Model.ServerSelectList)
-                {
-                    var serverName = serverUrl.Text;
-                    var selected = string.Equals(Model.HostName, serverName, StringComparison.InvariantCultureIgnoreCase) ? " selected=\"selected\"" : string.Empty;
+                    foreach (var serverUrl in Model.ServerSelectList)
+                    {
+                        var serverName = serverUrl.Text;
+                        var selected = string.Equals(Model.HostName, serverName, StringComparison.InvariantCultureIgnoreCase) ? " selected=\"selected\"" : string.Empty;
 
-                    @Html.Raw($"\t\t\t<option value=\"{serverName}\"{selected}>{serverName}</options>\n");
+                        @Html.Raw($"\t\t\t<option value=\"{serverName}\"{selected}>{serverName}</options>\n");
+                    }
                 }
-            }
-        </select>
-        <input type="text" id="id" title="RequestId or a search term" placeholder="RequestId or a search term" style="width: 600px; max-width: 600px;" value="@(Model.Id)" />
-        <input type="submit" id="showButton" value="Fetch request logs" onclick="redirect(); return false;" />
-        <input type="submit" id="browseButton" value="Browse application logs" onclick="getLogFileList(); return false;" />
-        <input type="checkbox" id="wordWrap" onclick="toggleWordWrap();" /> Wrap text
-    </form>
+            </select>
+            <input type="text" id="id" title="RequestId or a search term" placeholder="RequestId or a search term" style="width: 600px; max-width: 600px;" value="@(Model.Id)" />
+            <input type="submit" id="showButton" value="Fetch request logs" onclick="redirect(); return false;" />
+            <input type="submit" id="browseButton" value="Browse application logs" onclick="getLogFileList(); return false;" />
+            <input type="checkbox" id="wordWrap" onclick="toggleWordWrap();" /> Wrap text
+        </form>
+    </div>
+    <div id="loader" class="loader"></div>
+    <div id="msg"></div>
+    <div id="logsContainer"></div>
 </div>
-<div id="loader" class="loader"></div>
-<div id="logsContainer"></div>
-
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
 <script>
     function toggleWordWrap() {
@@ -266,10 +274,16 @@
             xhrFields: {
                 withCredentials: true
             },
-            success: function (result) {
-                if (result != null) {
+            success: function (result, textStatus, request) {
+                var mime = request.getResponseHeader('content-type');
+
+                if (result != null && mime.indexOf('html') > -1) {
                     $('#logsContainer').append(result);
                     $('#logsContainer').css('overflow', 'auto');
+                }
+                else {
+                    $('#msg').html(result);
+                    $('#msg').show();
                 }
             }
         });
@@ -299,7 +313,8 @@
             window.location.href = url;
         }
         else {
-            $('#logsContainer').html('No request id or search term specified');
+            $('#msg').html('No request id or search term specified');
+            $('#msg').show();
             return;
         }
     }
@@ -307,14 +322,17 @@
     function getLogs() {
         $('#logsContainer').css('overflow', 'inherit');
         if ($('#id').val().trim() == '') {
-            $('#logsContainer').html('No request id or search term specified');
+            $('#msg').html('No request id or search term specified');
+            $('#msg').show();
             return;
         }
         else if ($('#date').val() == '') {
-            $('#logsContainer').html('No date specified');
+            $('#msg').html('No date specified');
+            $('#msg').show();
             return;
         }
         $('#logsContainer').html('');
+        $('#msg').hide();
         $('#loader').show();
 
         var requests = [];
@@ -328,11 +346,13 @@
     function getLogFileList() {
         $('#logsContainer').css('overflow', 'inherit');
         if ($('#hostname').val().trim() == '') {
-            $('#logsContainer').html('No machine specified');
+            $('#msg').html('No machine specified');
+            $('#msg').show();
             return;
         }
 
         $('#logsContainer').html('');
+        $('#msg').hide();
         $('#loader').show();
 
         var requests = [];
@@ -381,11 +401,14 @@
     });
 
     $(document).on('ajaxError', function (event, request, ajaxSettings, errorMessage) {
-        var message = "(null)";
+        var message = request.responseText || "(null)";
 
         if (request.responseJSON && request.responseJSON.detail) {
-            message = request.responseJSON.detail.replace("\n", "\n<br />\n");
+            message = request.responseJSON.detail;
         }
+        message = $('#errorContainer .errorMessage').text(message).html();
+        message = message.replaceAll("\n", "\n<br />\n");
+
         $('#errorContainer .errorMessage').html('Error ' + request.status + ' received from ' + ajaxSettings.url + '\n<br />\n' + message);
         $('#errorContainer').show();
         $('#loader').hide();

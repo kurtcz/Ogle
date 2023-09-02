@@ -17,6 +17,8 @@ using System.Linq;
 using System.IO;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Net;
+using Ogle.Extensions;
 
 namespace Ogle
 {
@@ -41,10 +43,17 @@ namespace Ogle
         [Route("/ogle/Index")]
         public IActionResult Index(string? id, string? hostName, DateTime? date, bool highlight = true)
 		{
-			date ??= DateTime.Today.AddDays(-1);
+            var errorMessage = ValidateLogsConfiguration();
+
+            if (errorMessage != null)
+            {
+                return View("Error", errorMessage);
+            }
             try
             {
-				var model = new LogsViewModel
+                date ??= DateTime.Today.AddDays(-1);
+
+                var model = new LogsViewModel
 				{
 					RoutePrefix = GetRoutePrefix(),
 					Id = id,
@@ -128,11 +137,11 @@ namespace Ogle
 				
 				if(id == null)
 				{
-					return BadRequest();
+					return BadRequest("Please specify a request id or a unique search term");
 				}
 				else if(!searchPatternMatch.Success)
 				{
-                    return BadRequest();
+                    return BadRequest($"Search term has to match {_settings.CurrentValue.AllowedSearchPattern} regular expresion pattern");
                 }
 				else
 				{
@@ -142,7 +151,7 @@ namespace Ogle
 
 					if (string.IsNullOrEmpty(result))
 					{
-						return NotFound();
+						return NoContent();
 					}
 					else if (highlight)
 					{
@@ -150,7 +159,7 @@ namespace Ogle
                     }
                 }
 
-				return Content($"<pre>\n{result}</pre>\n");
+				return Content(result);
             }
             catch (Exception ex)
             {
@@ -165,7 +174,7 @@ namespace Ogle
 		{
 			try
 			{
-                date ??= DateTime.Today.AddDays(-1);
+				date ??= DateTime.Today.AddDays(-1);
 
                 var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
                 string result;
@@ -183,32 +192,36 @@ namespace Ogle
 					var endpoint = $"/{GetRoutePrefix()}/GetLogs?date={date.Value.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
 					var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
-					if (responses.All(i => i.Value.Error != null))
+					if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
 					{
-						result = string.Join("\n", responses.Values.Select(i => i.Error));
+						result = string.Join("\n", responses.Values.Select(i => i.Error).Distinct());
 
 						if (string.IsNullOrWhiteSpace(result))
 						{
 							result = $"Search failed for {date:yyyy-MM-dd}";
                         }
 
-                        return Problem($"<pre>{result}</pre>");
+                        //unexpected error uses a text/plain mime type and a 500 status code
+                        return Problem(result);
 					}
 					else
 					{
-						result = string.Join("\n", responses.Where(i => i.Value.Error == null &&
-																		!string.IsNullOrWhiteSpace(i.Value.Payload))
+						result = string.Join("\n", responses.Where(i => !string.IsNullOrWhiteSpace(i.Value.Payload))
 															.Select(i => i.Value.Payload));
-                        if (string.IsNullOrEmpty(result))
+                        if (string.IsNullOrWhiteSpace(result))
                         {
                             result = $"Request id or search term not found in logs for {date:yyyy-MM-dd}";
                         }
-
-                        return Content(result);	//server responses already contain <pre> containers
+                        else
+                        {
+                            //search result from servers uses a text/html mime type
+                            return Content($"<pre>{result}</pre>", "text/html");
+                        }
 					}
 				}
 
-                return Content($"<pre>{result}</pre>");
+                //error message uses a text/plain mime type
+                return Content(result);
             }
             catch (Exception ex)
 			{
@@ -266,6 +279,12 @@ namespace Ogle
 		[Route("/ogle/Metrics")]
         public IActionResult Metrics(DateTime? date, LogReaderOptions options, bool autoFetchData, bool canDrillDown = true)
 		{
+            var errorMessage = ValidateMetricsConfiguration();
+
+            if (errorMessage != null)
+            {
+                return View("Error", errorMessage);
+            }
             try
             {
                 date ??= DateTime.Today.AddDays(-1);
@@ -273,7 +292,7 @@ namespace Ogle
                 options.Date ??= DateOnly.FromDateTime(date.Value);
                 options.MinutesPerBucket ??= _settings.CurrentValue.DefaultMinutesPerBucket;
                 options.NumberOfBuckets ??= _settings.CurrentValue.DefaultNumberOfBuckets;
-
+				
 				var keyProps = _settings.CurrentValue.GroupKeyType.GetProperties()
 										.Select(i => i.Name)
 										.ToArray();
@@ -373,7 +392,6 @@ namespace Ogle
 		{
             try
             {
-                throw new Exception("msg");
                 date ??= DateTime.Today.AddDays(-1);
 
                 options.Date ??= DateOnly.FromDateTime(date.Value);
@@ -398,13 +416,13 @@ namespace Ogle
 				var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
                 var responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
-                if (responses.All(i => i.Value.Error != null))
+                if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
                 {
-                    return Problem(string.Join("\n", responses.Values.Select(i => i.Error)));
+                    return Problem(string.Join("\n", responses.Values.Select(i => i.Error).Distinct()));
                 }
                 else
                 {
-                    var metrics = responses.Where(i => i.Value.Error == null)
+                    var metrics = responses.Where(i => i.Value.Payload != null)
                                            .SelectMany(i => i.Value.Payload)
                                            .ToArray();
 
@@ -444,14 +462,14 @@ namespace Ogle
                 var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DefaultMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
                 var responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
-                if (responses.All(i => i.Value.Error != null))
+                if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
                 {
-                    return Problem(string.Join("\n", responses.Values.Select(i => i.Error)));
+                    return Problem(string.Join("\n", responses.Values.Select(i => i.Error).Distinct()));
                 }
                 else
                 {
                     var rowsSaved = 0L;
-                    var metrics = responses.Where(i => i.Value.Error == null)
+                    var metrics = responses.Where(i => i.Value.Payload != null)
 										   .SelectMany(i => i.Value.Payload)
 										   .ToArray();
 
@@ -460,14 +478,14 @@ namespace Ogle
                     endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
                     responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
-                    if (responses.All(i => i.Value.Error != null))
+                    if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
                     {
-                        return Problem(string.Join("\n", responses.Values.Select(i => i.Error)));
+                        return Problem(string.Join("\n", responses.Values.Select(i => i.Error).Distinct()));
                     }
                     else
                     {
                         var detailedRowsSaved = 0L;
-                        var detailedMetrics = responses.Where(i => i.Value.Error == null)
+                        var detailedMetrics = responses.Where(i => i.Value.Payload != null)
                                                        .SelectMany(i => i.Value.Payload)
                                                        .ToArray();
 
@@ -490,14 +508,207 @@ namespace Ogle
                 throw;
             }
         }
-
         #endregion
 
         #region Private methods
 
-		private IActionResult FormatErrorResponse(Exception ex, int? statusCode = null)
+        private string ValidateLogsConfiguration()
+        {
+            if (_settings.CurrentValue.GroupKeyType == null)
+            {
+                return $"OgleOptions.GroupKeyType is not defined";
+            }
+            if (_settings.CurrentValue.RecordType == null)
+            {
+                return $"OgleOptions.RecordType is not defined";
+            }
+
+            var keyProps = _settings.CurrentValue.GroupKeyType.GetProperties()
+                                    .Select(i => i.Name)
+                                    .ToArray();
+
+            if (!keyProps.Any())
+            {
+                return $"{_settings.CurrentValue.GroupKeyType.FullName} class does not define any properties";
+            }
+
+            var mandatoryLogPatternProps = _settings.CurrentValue.GroupKeyType.GetCustomAttributes(true)
+                                                    .Where(i => i is MandatoryLogPatternAttribute)
+                                                    .ToList();
+
+            if (!mandatoryLogPatternProps.Any())
+            {
+                return $"{_settings.CurrentValue.GroupKeyType.FullName} class is not decorated with [MandatoryLogPattern] attribute";
+            }
+
+            var mandatoryKeyProp = _settings.CurrentValue.RecordType.GetProperties()
+                                            .Where(i => i.GetCustomAttributes(true)
+                                                         .Any(j => (j as MandatoryAttribute)?.IsKey ?? false))
+                                            .ToList();
+            if (!mandatoryKeyProp.Any())
+            {
+                return $"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory(isKey: true)] attribute";
+            }
+            if (mandatoryKeyProp.Count > 1)
+            {
+                return $"{_settings.CurrentValue.RecordType.FullName} class can only define a single property decorated with [Mandatory(isKey: true)] attribute";
+            }
+
+            return null;
+        }
+
+        private string ValidateMetricsConfiguration()
 		{
-            return Problem($"{ex.Message}\n{ex.StackTrace}", statusCode: statusCode, title: ex.Message, type: ex.GetType().ToString());
+            if (_settings.CurrentValue.GroupKeyType == null)
+            {
+                return $"OgleOptions.GroupKeyType is not defined";
+            }
+            if (_settings.CurrentValue.RecordType == null)
+            {
+                return $"OgleOptions.RecordType is not defined";
+            }
+            if (_settings.CurrentValue.MetricsType == null)
+            {
+                return $"OgleOptions.MetricsType is not defined";
+            }
+            if (_settings.CurrentValue.GroupFunction == null)
+            {
+                return $"OgleOptions.GroupFunction is not defined";
+            }
+
+            if (!_settings.CurrentValue.RecordType.IsSubclassOf(_settings.CurrentValue.GroupKeyType))
+            {
+                return $"{_settings.CurrentValue.RecordType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}";
+            }
+            if (!_settings.CurrentValue.MetricsType.IsSubclassOf(_settings.CurrentValue.GroupKeyType))
+            {
+                return $"{_settings.CurrentValue.MetricsType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}";
+            }
+
+            var keyProps = _settings.CurrentValue.GroupKeyType.GetProperties()
+                                    .Select(i => i.Name)
+                                    .ToArray();
+
+            if (!keyProps.Any())
+            {
+                return $"{_settings.CurrentValue.GroupKeyType.FullName} class does not define any properties";
+            }
+
+            var valueProps = _settings.CurrentValue.MetricsType.GetProperties()
+                                      .Where(i => !keyProps.Contains(i.Name))
+                                      .Select(i => i.Name)
+                                      .ToArray();
+
+            if (!valueProps.Any())
+            {
+                return $"{_settings.CurrentValue.MetricsType.FullName} class does not define any properties";
+            }
+
+            var timeBucketProp = _settings.CurrentValue.GroupKeyType.GetProperties()
+                                          .Where(i => i.GetCustomAttributes(true).Any(j => j is TimeBucketAttribute))
+                                          .Select(i => i.Name.LowerCaseFirstCharacter())
+                                          .ToList();
+
+            if (!timeBucketProp.Any())
+            {
+                return $"{_settings.CurrentValue.GroupKeyType.FullName} class does not define a property decorated with [TimeBucket] attribute";
+            }
+            if (timeBucketProp.Count > 1)
+            {
+                return $"{_settings.CurrentValue.GroupKeyType.FullName} class can only define a single [TimeBucket] attribute";
+            }
+
+            var totalProp = _settings.CurrentValue.MetricsType.GetProperties()
+                                     .Where(i => i.GetCustomAttributes(true).Any(j => j is TotalAttribute))
+                                     .Select(i => i.Name.LowerCaseFirstCharacter())
+                                     .ToList();
+
+            if (!timeBucketProp.Any())
+            {
+                return $"{_settings.CurrentValue.MetricsType.FullName} class does not define a property decorated with [Total] attribute";
+            }
+            if (totalProp.Count > 1)
+            {
+                return $"{_settings.CurrentValue.MetricsType.FullName} class can only define a single [Total] attribute";
+            }
+
+            var mandatoryProps = _settings.CurrentValue.RecordType.GetProperties()
+                                          .Where(i => i.GetCustomAttributes(true).Any(j => j is MandatoryAttribute))
+                                          .Select(i => i.Name.LowerCaseFirstCharacter())
+                                          .ToList();
+
+            if (!mandatoryProps.Any())
+            {
+                return $"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory] attribute";
+            }
+
+            var mandatoryLogPatternProps = _settings.CurrentValue.GroupKeyType.GetCustomAttributes(true)
+                                                    .Where(i => i is MandatoryLogPatternAttribute)
+                                                    .ToList();
+
+            if (!mandatoryLogPatternProps.Any())
+            {
+                return $"{_settings.CurrentValue.GroupKeyType.FullName} class is not decorated with [MandatoryLogPattern] attribute";
+            }
+
+            var mandatoryKeyProp = _settings.CurrentValue.RecordType.GetProperties()
+                                            .Where(i => i.GetCustomAttributes(true)
+                                                         .Any(j => (j as MandatoryAttribute)?.IsKey ?? false))
+                                            .ToList();
+            if (!mandatoryKeyProp.Any())
+            {
+                return $"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory(isKey: true)] attribute";
+            }
+            if (mandatoryKeyProp.Count > 1)
+            {
+                return $"{_settings.CurrentValue.RecordType.FullName} class can only define a single property decorated with [Mandatory(isKey: true)] attribute";
+            }
+
+            var logPatternProps = _settings.CurrentValue.RecordType.GetProperties()
+                                           .Where(i => i.GetCustomAttributes(true).Any(j => j is LogPatternAttribute))
+                                           .Select(i => i.Name.LowerCaseFirstCharacter())
+                                           .ToList();
+
+            if (!logPatternProps.Any())
+            {
+                return $"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [LogPattern] attribute";
+            }
+
+            if (_settings.CurrentValue.DefaultMinutesPerBucket < 1)
+            {
+                return $"Value must be at least one: OgleOptions.DefaultMinutesPerBucket";
+            }
+            if (_settings.CurrentValue.DefaultNumberOfBuckets < 1)
+            {
+                return $"Value must be at least one: OgleOptions.DefaultNumberOfBuckets";
+            }
+            if (_settings.CurrentValue.DrillDownMinutesPerBucket < 1)
+            {
+                return $"Value must be at least one: OgleOptions.DrillDownMinutesPerBucket";
+            }
+            if (_settings.CurrentValue.DrillDownNumberOfBuckets < 1)
+            {
+                return $"Value must be at least one: OgleOptions.DrillDownNumberOfBuckets";
+            }
+            if (_settings.CurrentValue.DefaultMinutesPerBucket <= _settings.CurrentValue.DrillDownMinutesPerBucket)
+            {
+                return $"OgleOptions.DefaultMinutesPerBucket must be greater than OgleOptions.DrillDownMinutesPerBucket";
+            }
+            if (_settings.CurrentValue.DefaultMinutesPerBucket * _settings.CurrentValue.DefaultNumberOfBuckets != 1440)
+            {
+                return $"OgleOptions.DefaultMinutesPerBucket times OgleOptions.DefaultNumberOfBuckets has to be equal to number minutes per day (1440)";
+            }
+            if (_settings.CurrentValue.DrillDownMinutesPerBucket * _settings.CurrentValue.DrillDownNumberOfBuckets != _settings.CurrentValue.DefaultMinutesPerBucket)
+            {
+                return $"OgleOptions.DrillDownMinutesPerBucket times OgleOptions.DrillDownNumberOfBuckets has to be equal to OgleOptions.DefaultMinutesPerBucket ({_settings.CurrentValue.DefaultMinutesPerBucket})";
+            }
+
+            return null;
+        }
+
+        private IActionResult FormatErrorResponse(Exception ex, int? statusCode = null)
+		{
+            return Problem($"{ex.GetType()}: {ex.Message}\n{ex.StackTrace}", statusCode: statusCode, title: ex.Message, type: ex.GetType().ToString());
         }
 
 		private string GetRoutePrefix()
@@ -578,11 +789,13 @@ namespace Ogle
 		}
 
         private async Task<Dictionary<string, NodeResponse<TServerResponse>>> CollateJsonResponsesFromServers<TServerResponse>(string urlPath)
-		{
+            where TServerResponse : class
+        {
 			return await CollateJsonResponsesFromServers<TServerResponse>(null, urlPath);
         }
 
 		private async Task<Dictionary<string, NodeResponse<TServerResponse>>> CollateJsonResponsesFromServers<TServerResponse>(string? hostname, string urlPath)
+            where TServerResponse: class
         {
 			var hostnames = string.IsNullOrEmpty(hostname) ? _settings.CurrentValue.Hostnames : new[] { hostname };
 			var result = new ConcurrentBag<(string, NodeResponse<TServerResponse>)>();
@@ -607,33 +820,54 @@ namespace Ogle
 					var type = typeof(IEnumerable<>).MakeGenericType(new[] { _settings.CurrentValue.MetricsType });
 
                     responseContent = await response.Content.ReadAsStringAsync();
-					if (typeof(TServerResponse) == typeof(string))
+					if (!response.StatusCode.IsSuccessCode())
 					{
-                        serverResponse = (TServerResponse)(object)responseContent;
+                        responseWrapper = new NodeResponse<TServerResponse>
+                        {
+                            StatusCode = response.StatusCode,
+                            Error = $"Error {(int)response.StatusCode} received from {urlPath}\n{responseContent}"
+                        };
                     }
-                	else
+                    else if (typeof(TServerResponse) == typeof(string))
+                    {
+                        responseWrapper = new NodeResponse<TServerResponse>
+                        {
+                            StatusCode = response.StatusCode,
+                            Payload = responseContent as TServerResponse
+                        };
+                    }
+                    else if (response.Content.Headers.ContentType?.MediaType == "application/json")
 					{
 						var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
 						options.Converters.Add(new JsonTimeSpanConverter());
 						serverResponse = (TServerResponse)JsonSerializer.Deserialize(responseContent, type, options);
-					}
-
-                    responseWrapper = new NodeResponse<TServerResponse>
-					{
-						Payload = serverResponse
-					};
-				}
+                        responseWrapper = new NodeResponse<TServerResponse>
+                        {
+                            StatusCode = response.StatusCode,
+                            Payload = serverResponse
+                        };
+                    }
+                    else
+                    {
+                        var mime = response.Content.Headers.ContentType?.MediaType ?? "(null)";
+                        throw new InvalidDataException($"Unexpected response type {mime}");
+                    }
+                }
 				catch(Exception ex)
 				{
                     var hre = ex as HttpRequestException;
 
                     responseWrapper = new NodeResponse<TServerResponse>
                     {
-                        Error = $"Endpoint {actualServerUrl} returned an error {hre?.StatusCode?.ToString() ?? string.Empty}: {ex.Message}"
+                        Error = $"Error {hre?.StatusCode?.ToString() ?? string.Empty} returned from {actualServerUrl}{urlPath}\n{ex.GetType()}: {ex.Message}"
                     };
-                    _logger.LogError(ex, "{url} endpoint at {actualServerUrl} returned an error.\n{exceptionMessage}",
-									 urlPath, actualServerUrl, ex.Message);
+                    _logger.LogError(ex, "Error {statusCode} returned from {actualServerUrl}{urlPath}\n{exceptionType}: {exceptionMessage}",
+                                     hre?.StatusCode?.ToString() ?? string.Empty,
+									 actualServerUrl,
+                                     urlPath,
+									 ex.GetType(),
+									 ex.Message);
 				}
 
 				result.Add((actualServerUrl, responseWrapper));

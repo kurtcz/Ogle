@@ -18,8 +18,7 @@
         }
     }
 
-    .container {
-        max-width: initial !important;
+    #ogleContainer {
         font-size: smaller;
     }
 
@@ -140,6 +139,14 @@
     #dataTable td {
         padding: 5px 10px;
         text-align: center;
+    }
+
+    #msg {
+        display: none;
+        margin-top: 10px;
+        text-align: center;
+        border: 2px solid #4070d0;
+        background-color: lightyellow;
     }
 
     #loader {
@@ -327,6 +334,7 @@
                 }
             }
             </div>
+            <div id="msg"></div>
             <div id="dataTable"></div>
         </div>
     </div>
@@ -360,6 +368,8 @@
     var serverNames = [@Html.Raw(string.Join(", ", Model.ServerUrls.Select(i => $"'{new Uri(i).Host.ToLower()}'")))];
     var datasetColors = [@Html.Raw(string.Join(", ", settings.CurrentValue.DatasetColors.Select(i => $"'{i}'")))];
     var chartDatasets = [];
+    var firstTimeShowMetrics = true;
+
 @{
     foreach (var prop in Model.KeyProperties.Where(i => i != Model.TimeBucketProperty))
     {
@@ -535,6 +545,10 @@
 
     $(document).ready(function () {
         $('.viewButtonsContainer input[type=button]')[0].click();
+        @if(!string.IsNullOrWhiteSpace(Model.Error))
+        {
+            @Html.Raw($"\t\tshowError(\"{Model.Error}\");\n");
+        }
     });
     $(document).on('ajaxError', function (event, request, ajaxSettings, errorMessage) {
         var message = request.responseText || "(null)";
@@ -695,6 +709,9 @@
                 withCredentials: true
             }
         }).done(function (result) {
+            if (result.length == 0) {
+                dataResponses = resetDataResponses();
+            }
             result = transformData(result);
 
             if (dataResponses.bucketNames.length == 0) {
@@ -714,7 +731,6 @@
         @Html.Raw($"\t\t\t{{\n\t\t\t\t$(\"#chartFilter-{prop}\").append(new Option(values_{prop}[i], values_{prop}[i]));\n\t\t\t}}\n");
     }
 }
-            $("#filterContainer").show();
             updateChartDatasets();
         });
     }
@@ -766,9 +782,6 @@
         $('#chartModesContainer input[type=button]').css('background-color', '');
         $('#chartMode-' + chartMode).css('background-color', 'lightblue');
 
-        if (dataResponses.@(Model.TotalProperty).length == 0) {
-            return;
-        }
         var ticks = null;
 
         switch (activeTab) {
@@ -839,7 +852,18 @@
 
         chart.update();
         $('#chartModesContainer').show();
-        $('#dataTable').show();
+        if (dataResponses.@(Model.TotalProperty).length == 0) {
+            $('#dataTable').hide();
+            if (!firstTimeShowMetrics) {
+                $('#msg').html('No metrics found');
+                $('#msg').show();
+            }
+            firstTimeShowMetrics = false;
+        }
+        else {
+            $('#dataTable').show();
+            $('#msg').hide();
+        }
         $('#loader').hide();
 
         $('#dataTable tr td, #dataTable tr th:not(:first-of-type):not(:last-of-type)').hover(function () {
