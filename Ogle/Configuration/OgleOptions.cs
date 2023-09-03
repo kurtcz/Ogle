@@ -12,6 +12,7 @@ namespace Ogle
 		public int LogReaderBackBufferCapacity { get; set; }
 		public int HttpPort { get; set; }
         public int HttpsPort { get; set; }
+		public string Layout { get; set; }
 		public string[] Hostnames { get; set; }
 		public string[] DatasetColors { get; set; }
 		public MetricsButtonsPosition MetricsButtonsPosition { get; set; }

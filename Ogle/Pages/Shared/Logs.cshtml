@@ -1,6 +1,7 @@
 ﻿@using Ogle
 @model LogsViewModel
 @{
+    Layout = Model.Layout ?? "_OgleLayout";
     ViewBag.Title = "View Logs";
 }
 <style>
@@ -84,6 +85,13 @@
         width: 120px;
         height: 120px;
         animation: spin 2s linear infinite;
+    }
+
+    form {
+        display: grid;
+        width: 100%;
+        grid-template-columns: auto 1fr auto;
+        grid-gap: 5px;
     }
 
     pre {
@@ -181,9 +189,9 @@
         color: initial;
     }
 
-        select option[value=""] {
-            color: gray;
-        }
+    select option[value=""] {
+        color: gray;
+    }
 
     @@keyframes spin {
         0% {
@@ -229,42 +237,50 @@
 
     <div>
         <form>
-            <label for="hostname">Date:</label>
-            <input type="date" id="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@Model.Date?.ToString("yyyy-MM-dd")" />
-            <select id="hostname">
-                @{
-                    var defaultSelected = string.IsNullOrWhiteSpace(Model.HostName) ? " selected=\"selected\"" : string.Empty;
+            <div>
+                <label for="hostname">Date:</label>
+                <input type="date" id="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" value="@Model.Date?.ToString("yyyy-MM-dd")" />
+                <select id="hostname">
+                    @{
+                        var defaultSelected = string.IsNullOrWhiteSpace(Model.HostName) ? " selected=\"selected\"" : string.Empty;
 
-                    @Html.Raw($"\t\t\t<option value=\"\"{defaultSelected}>Machine</option>\n");
+                        @Html.Raw($"\t\t\t<option value=\"\"{defaultSelected}>Machine</option>\n");
 
-                    foreach (var serverUrl in Model.ServerSelectList)
-                    {
-                        var serverName = serverUrl.Text;
-                        var selected = string.Equals(Model.HostName, serverName, StringComparison.InvariantCultureIgnoreCase) ? " selected=\"selected\"" : string.Empty;
+                        foreach (var serverUrl in Model.ServerSelectList)
+                        {
+                            var serverName = serverUrl.Text;
+                            var selected = string.Equals(Model.HostName, serverName, StringComparison.InvariantCultureIgnoreCase) ? " selected=\"selected\"" : string.Empty;
 
-                        @Html.Raw($"\t\t\t<option value=\"{serverName}\"{selected}>{serverName}</options>\n");
+                            @Html.Raw($"\t\t\t<option value=\"{serverName}\"{selected}>{serverName}</options>\n");
+                        }
                     }
-                }
-            </select>
-            <input type="text" id="id" title="RequestId or a search term" placeholder="RequestId or a search term" style="width: 600px; max-width: 600px;" value="@(Model.Id)" />
-            <input type="submit" id="showButton" value="Fetch request logs" onclick="redirect(); return false;" />
-            <input type="submit" id="browseButton" value="Browse application logs" onclick="getLogFileList(); return false;" />
-            <input type="checkbox" id="wordWrap" onclick="toggleWordWrap();" /> Wrap text
+                </select>
+            </div>
+            <input type="text" id="id" title="RequestId or a search term" placeholder="RequestId or a search term" value="@(Model.Id)" />
+            <div>
+                <input type="submit" id="showButton" value="Fetch request logs" onclick="redirect(); return false;" />
+                <input type="submit" id="browseButton" value="Browse application logs" onclick="getLogFileList(); return false;" />
+                <input type="checkbox" id="wordWrap" onclick="toggleWordWrap();" /> Wrap text
+            </div>
         </form>
     </div>
     <div id="loader" class="loader"></div>
     <div id="msg"></div>
     <div id="logsContainer"></div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
 <script>
+    @{
+        @Html.Raw($"var routePrefix = '{Model.RoutePrefix}';\n");
+    }
     function toggleWordWrap() {
         var wordWrap = $('#wordWrap').prop('checked');
 
         if (wordWrap) {
-            $('#logsContainer').css('white-space', 'pre-wrap');
+            $('#logsContainer pre').css('white-space', 'pre-wrap');
         } else {
-            $('#logsContainer').css('white-space', 'pre');
+            $('#logsContainer pre').css('white-space', 'pre');
         }
     }
 
@@ -313,6 +329,7 @@
             window.location.href = url;
         }
         else {
+            $('#logsContainer').html('');
             $('#msg').html('No request id or search term specified');
             $('#msg').show();
             return;
@@ -320,6 +337,7 @@
     }
 
     function getLogs() {
+        $('#logsContainer').html('');
         $('#logsContainer').css('overflow', 'inherit');
         if ($('#id').val().trim() == '') {
             $('#msg').html('No request id or search term specified');
@@ -331,12 +349,11 @@
             $('#msg').show();
             return;
         }
-        $('#logsContainer').html('');
         $('#msg').hide();
         $('#loader').show();
 
         var requests = [];
-        requests.push(updateDataForServer('GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + $('#id').val() + '&highlight={Model.Highlight}&rand=' + getRandomInt(1000)));
+        requests.push(updateDataForServer('/' + routePrefix + '/GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + $('#id').val() + '&highlight={' + @(Model.Highlight.ToString().LowerCaseFirstCharacter()) + '&rand=' + getRandomInt(1000)));
 
         $.when.apply($, requests).done(function () {
             $('#loader').hide();
@@ -344,6 +361,7 @@
     }
 
     function getLogFileList() {
+        $('#logsContainer').html('');
         $('#logsContainer').css('overflow', 'inherit');
         if ($('#hostname').val().trim() == '') {
             $('#msg').html('No machine specified');
@@ -351,24 +369,12 @@
             return;
         }
 
-        $('#logsContainer').html('');
         $('#msg').hide();
         $('#loader').show();
 
         var requests = [];
-        @{
-            @Html.Raw("\n\t\t\tvar hostname=$(\"#hostname\").val();\n");
+        requests.push(updateDataForServer('/' + routePrefix + '/BrowseLogFiles?date=' + $("#date").val() + '&hostname=' + $('#hostname').val() + '&rand=' + getRandomInt(1000)));
 
-            foreach(var serverUrl in Model.ServerSelectList)
-            {
-                var serverName = serverUrl.Text;
-
-                @Html.Raw($"\t\t\tif (!hostname || hostname == '{serverName}')\n");
-                @Html.Raw("\t\t\t{\n");
-                @Html.Raw($"\t\t\t\trequests.push(updateDataForServer('{serverUrl.Value}{Model.RoutePrefix}/BrowseLogFiles?date=' + $(\"#date\").val() + '&rand=' + getRandomInt(1000)));\n");
-                @Html.Raw("\t\t\t}\n");
-            }
-        }
         $.when.apply($, requests).done(function () {
             $('#loader').hide();
         });

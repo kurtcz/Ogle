@@ -6,7 +6,8 @@ namespace Ogle
 {
 	public class LogsViewModel
 	{
-		public string RoutePrefix { get; set; }
+        public string? Layout { get; set; }
+        public string? RoutePrefix { get; set; }
 		public string Id { get; set; }
 		public string HostName { get; set; }
 		public DateOnly? Date { get; set; }

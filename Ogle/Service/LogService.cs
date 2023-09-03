@@ -315,7 +315,7 @@ namespace Ogle
                                                     .ThenBy(i => i is WarningLogPatternAttribute ? 0 : 1))
                     {
                         //string.Contains is a fast pre-check
-                        if (line.Contains(pattern.Filter))
+                        if (pattern.Filter == null || line.Contains(pattern.Filter))
                         {
                             //if pre-check suceeded try a regex match
                             var match = pattern.Regex.Match(line);

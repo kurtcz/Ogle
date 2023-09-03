@@ -28,6 +28,6 @@ namespace Example.Model
 
         [ErrorLogPattern("ERR", @"\ ([^;]+)$")]
 		public string Error { get; set; }
-	}
+    }
 }
 

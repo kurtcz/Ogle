@@ -28,7 +28,7 @@ namespace Example
                 options.MetricsType = typeof(LogMetrics);
                 options.GroupFunction = grouppedRecords => grouppedRecords.Select(i =>
                 {
-                    var g = (IGrouping<LogGroupKey,LogRecord>)i;
+                    var g = (IGrouping<LogGroupKey, LogRecord>)i;
 
                     return new LogMetrics
                     {

@@ -1,7 +1,13 @@
-﻿@using Ogle
-@model string
+﻿@using Ogle;
+@using System.Linq;
+@model ErrorViewModel;
 @{
+    Layout = Model.Layout ?? "_OgleLayout";
     ViewBag.Title = "Invalid Ogle Configuration";
+
+    var message = string.Join("\n", Model.ErrorMessages.Select(i => $"<li>{i}</li>"));
+
+    message = $"<ul>\n{message}\n</ul>\n";
 }
 <style>
     @@media (prefers-color-scheme: dark) {
@@ -27,7 +33,7 @@
     }
 
     .errorMessage {
-        margin: 5px 20px 5px 20px;
+        margin: 10px 20px 10px 20px;
     }
 </style>
 
@@ -40,5 +46,5 @@
 <h4>@(ViewBag.Title)</h4>
 
 <div id="errorContainer">
-    <div class="errorMessage">@Model</div>
+    <div class="errorMessage">@Html.Raw(message)</div>
 </div>

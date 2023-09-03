@@ -4,6 +4,7 @@
 @inject IOptionsMonitor<OgleOptions> settings;
 @model MetricsViewModel
 @{
+    Layout = Model.Layout ?? "_OgleLayout";
     ViewBag.Title = "Log Metrics";
 }
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
@@ -90,13 +91,13 @@
         width: 100%;
     }
 
-    #viewButtonsContainer, #viewButtonsBottomContainer {
+    .viewButtonsContainer {
         margin: auto;
         margin-top: 10px;
         text-align: center;
     }
 
-    #viewButtonsContainer input {
+    .viewButtonsContainer input {
         margin-top: 4px;
     }
 

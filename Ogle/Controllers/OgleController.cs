@@ -19,6 +19,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Net;
 using Ogle.Extensions;
+using Microsoft.AspNetCore.Http;
 
 namespace Ogle
 {
@@ -43,19 +44,24 @@ namespace Ogle
         [Route("/ogle/Index")]
         public IActionResult Index(string? id, string? hostName, DateTime? date, bool highlight = true)
 		{
-            var errorMessage = ValidateLogsConfiguration();
-
-            if (errorMessage != null)
-            {
-                return View("Error", errorMessage);
-            }
             try
             {
+                var errorMessages = ValidateLogsConfiguration();
+
+                if (errorMessages.Any())
+                {
+                    return View("Error", new ErrorViewModel
+                    {
+                        Layout = _settings.CurrentValue.Layout,
+                        ErrorMessages = errorMessages.ToArray()
+                    });
+                }
                 date ??= DateTime.Today.AddDays(-1);
 
                 var model = new LogsViewModel
 				{
-					RoutePrefix = GetRoutePrefix(),
+                    Layout = _settings.CurrentValue.Layout,
+                    RoutePrefix = GetRoutePrefix(),
 					Id = id,
 					Date = DateOnly.FromDateTime(date.Value),
 					HostName = hostName,
@@ -78,44 +84,73 @@ namespace Ogle
 
 		[HttpGet]
         [Route("/ogle/BrowseLogFiles")]
-        public IActionResult BrowseLogFiles(DateTime? date)
+        public async Task<IActionResult> BrowseLogFiles(DateTime? date, string hostname)
 		{
             try
             {
-                dynamic logService = LogServiceFactory.CreateInstance(_settings);
+                if (!string.IsNullOrWhiteSpace(hostname))
+                {
+                    var endpoint = $"/{GetRoutePrefix()}/BrowseLogFiles?date={date}";
+                    var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
-				var sb = new StringBuilder();
-                var fileNames = new StringBuilder();
-                var fileDates = new StringBuilder();
-                var fileSizes = new StringBuilder();
-                DateOnly? dateOnly = date.HasValue ? DateOnly.FromDateTime(date.Value) : null;
+                    if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
+                    {
+                        var result = string.Join("\n", responses.Values.Select(i => i.Error).Distinct());
 
-				sb.AppendLine("<div class=\"browseFilesContainer\">");
-				fileNames.AppendLine("<pre>");
-                fileDates.AppendLine("<pre>");
-                fileSizes.AppendLine("<pre>");
-                fileNames.AppendLine("Filename");
-                fileDates.AppendLine("Last write time");
-                fileSizes.AppendLine("File size");
-                foreach (var path in logService.GetLogFilenames(dateOnly))
-				{
-					var fi = new FileInfo(path);
-					var filename = Path.GetFileName(path);
-					var url = Url.Action("DownloadLog", "ogle", new { log = filename }, Request.Scheme, Request.Host.ToUriComponent());
+                        if (string.IsNullOrWhiteSpace(result))
+                        {
+                            result = $"Browse failed for {date:yyyy-MM-dd}";
+                        }
 
-					fileNames.AppendLine($"<a href=\"{url}\">{filename}</a>");
-                    fileDates.AppendLine(fi.LastWriteTime.ToString());
-					fileSizes.AppendLine($"{fi.Length:N0} bytes");
-				}
-                fileNames.AppendLine("</pre>");
-                fileDates.AppendLine("</pre>");
-                fileSizes.AppendLine("</pre>");
-				sb.AppendLine(fileNames.ToString());
-                sb.AppendLine(fileDates.ToString());
-                sb.AppendLine(fileSizes.ToString());
-                sb.AppendLine("</div>\n");
+                        //unexpected error uses a text/plain mime type and a 500 status code
+                        return Problem(result);
+                    }
+                    else
+                    {
+                        var result = string.Join("\n", responses.Where(i => !string.IsNullOrWhiteSpace(i.Value.Payload))
+                                                                .Select(i => i.Value.Payload));
 
-                return Content(sb.ToString(), "text/html");
+                        //search result from servers uses a text/html mime type
+                        return Content(result, "text/html");
+                    }
+                }
+                else
+                {
+                    dynamic logService = LogServiceFactory.CreateInstance(_settings);
+
+                    var sb = new StringBuilder();
+                    var fileNames = new StringBuilder();
+                    var fileDates = new StringBuilder();
+                    var fileSizes = new StringBuilder();
+                    DateOnly? dateOnly = date.HasValue ? DateOnly.FromDateTime(date.Value) : null;
+
+                    sb.AppendLine("<div class=\"browseFilesContainer\">");
+                    fileNames.AppendLine("<pre>");
+                    fileDates.AppendLine("<pre>");
+                    fileSizes.AppendLine("<pre>");
+                    fileNames.AppendLine("Filename");
+                    fileDates.AppendLine("Last write time");
+                    fileSizes.AppendLine("File size");
+                    foreach (var path in logService.GetLogFilenames(dateOnly))
+                    {
+                        var fi = new FileInfo(path);
+                        var filename = Path.GetFileName(path);
+                        var url = Url.Action("DownloadLog", "ogle", new { log = filename }, Request.Scheme, Request.Host.ToUriComponent());
+
+                        fileNames.AppendLine($"<a href=\"{url}\">{filename}</a>");
+                        fileDates.AppendLine(fi.LastWriteTime.ToString());
+                        fileSizes.AppendLine($"{fi.Length:N0} bytes");
+                    }
+                    fileNames.AppendLine("</pre>");
+                    fileDates.AppendLine("</pre>");
+                    fileSizes.AppendLine("</pre>");
+                    sb.AppendLine(fileNames.ToString());
+                    sb.AppendLine(fileDates.ToString());
+                    sb.AppendLine(fileSizes.ToString());
+                    sb.AppendLine("</div>\n");
+
+                    return Content(sb.ToString(), "text/html");
+                }
             }
             catch (Exception ex)
             {
@@ -170,7 +205,7 @@ namespace Ogle
 
 		[HttpGet]
 		[Route("/ogle/GetLogsFromAllServers")]
-		public async Task<IActionResult> GetLogsFromAllServers(DateTime? date, string hostname, string id, bool highlight = true)
+		public async Task<IActionResult> GetLogsFromAllServers(DateTime? date, string? hostname, string id, bool? highlight = true)
 		{
 			try
 			{
@@ -279,14 +314,18 @@ namespace Ogle
 		[Route("/ogle/Metrics")]
         public IActionResult Metrics(DateTime? date, LogReaderOptions options, bool autoFetchData, bool canDrillDown = true)
 		{
-            var errorMessage = ValidateMetricsConfiguration();
-
-            if (errorMessage != null)
-            {
-                return View("Error", errorMessage);
-            }
             try
             {
+                var errorMessages = ValidateMetricsConfiguration();
+
+                if (errorMessages.Any())
+                {
+                    return View("Error", new ErrorViewModel
+                    {
+                        Layout = _settings.CurrentValue.Layout,
+                        ErrorMessages = errorMessages.ToArray()
+                    });
+                }
                 date ??= DateTime.Today.AddDays(-1);
 
                 options.Date ??= DateOnly.FromDateTime(date.Value);
@@ -330,7 +369,8 @@ namespace Ogle
 
                 return View(new MetricsViewModel
 				{
-					RoutePrefix = GetRoutePrefix(),
+                    Layout = _settings.CurrentValue.Layout,
+                    RoutePrefix = GetRoutePrefix(),
 					ServerUrls = _settings.CurrentValue.Hostnames.Select(i => GetHostnameUrl(Request.Scheme, i).ToString()).ToArray(),
 					Date = options.Date.Value,
 					HourFrom = options.HourFrom,
@@ -512,15 +552,25 @@ namespace Ogle
 
         #region Private methods
 
-        private string ValidateLogsConfiguration()
+        private IEnumerable<string> ValidateLogsConfiguration()
         {
+            var result = new List<string>();
+
             if (_settings.CurrentValue.GroupKeyType == null)
             {
-                return $"OgleOptions.GroupKeyType is not defined";
+                result.Add($"OgleOptions.GroupKeyType is not defined");
             }
             if (_settings.CurrentValue.RecordType == null)
             {
-                return $"OgleOptions.RecordType is not defined";
+                result.Add($"OgleOptions.RecordType is not defined");
+            }
+            if (!_settings.CurrentValue.RecordType.IsSubclassOf(_settings.CurrentValue.GroupKeyType))
+            {
+                result.Add($"{_settings.CurrentValue.RecordType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}");
+            }
+            if (!_settings.CurrentValue.MetricsType.IsSubclassOf(_settings.CurrentValue.GroupKeyType))
+            {
+                result.Add($"{_settings.CurrentValue.MetricsType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}");
             }
 
             var keyProps = _settings.CurrentValue.GroupKeyType.GetProperties()
@@ -529,7 +579,7 @@ namespace Ogle
 
             if (!keyProps.Any())
             {
-                return $"{_settings.CurrentValue.GroupKeyType.FullName} class does not define any properties";
+                result.Add($"{_settings.CurrentValue.GroupKeyType.FullName} class does not define any properties");
             }
 
             var mandatoryLogPatternProps = _settings.CurrentValue.GroupKeyType.GetCustomAttributes(true)
@@ -538,7 +588,7 @@ namespace Ogle
 
             if (!mandatoryLogPatternProps.Any())
             {
-                return $"{_settings.CurrentValue.GroupKeyType.FullName} class is not decorated with [MandatoryLogPattern] attribute";
+                result.Add($"{_settings.CurrentValue.GroupKeyType.FullName} class is not decorated with [MandatoryLogPattern] attribute");
             }
 
             var mandatoryKeyProp = _settings.CurrentValue.RecordType.GetProperties()
@@ -547,42 +597,44 @@ namespace Ogle
                                             .ToList();
             if (!mandatoryKeyProp.Any())
             {
-                return $"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory(isKey: true)] attribute";
+                result.Add($"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory(isKey: true)] attribute");
             }
             if (mandatoryKeyProp.Count > 1)
             {
-                return $"{_settings.CurrentValue.RecordType.FullName} class can only define a single property decorated with [Mandatory(isKey: true)] attribute";
+                result.Add($"{_settings.CurrentValue.RecordType.FullName} class can only define a single property decorated with [Mandatory(isKey: true)] attribute");
             }
 
-            return null;
+            return result;
         }
 
-        private string ValidateMetricsConfiguration()
+        private IEnumerable<string> ValidateMetricsConfiguration()
 		{
+            var result = new List<string>();
+
             if (_settings.CurrentValue.GroupKeyType == null)
             {
-                return $"OgleOptions.GroupKeyType is not defined";
+                result.Add($"OgleOptions.GroupKeyType is not defined");
             }
             if (_settings.CurrentValue.RecordType == null)
             {
-                return $"OgleOptions.RecordType is not defined";
+                result.Add($"OgleOptions.RecordType is not defined");
             }
             if (_settings.CurrentValue.MetricsType == null)
             {
-                return $"OgleOptions.MetricsType is not defined";
+                result.Add($"OgleOptions.MetricsType is not defined");
             }
             if (_settings.CurrentValue.GroupFunction == null)
             {
-                return $"OgleOptions.GroupFunction is not defined";
+                result.Add($"OgleOptions.GroupFunction is not defined");
             }
 
             if (!_settings.CurrentValue.RecordType.IsSubclassOf(_settings.CurrentValue.GroupKeyType))
             {
-                return $"{_settings.CurrentValue.RecordType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}";
+                result.Add($"{_settings.CurrentValue.RecordType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}");
             }
             if (!_settings.CurrentValue.MetricsType.IsSubclassOf(_settings.CurrentValue.GroupKeyType))
             {
-                return $"{_settings.CurrentValue.MetricsType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}";
+                result.Add($"{_settings.CurrentValue.MetricsType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}");
             }
 
             var keyProps = _settings.CurrentValue.GroupKeyType.GetProperties()
@@ -591,7 +643,7 @@ namespace Ogle
 
             if (!keyProps.Any())
             {
-                return $"{_settings.CurrentValue.GroupKeyType.FullName} class does not define any properties";
+                result.Add($"{_settings.CurrentValue.GroupKeyType.FullName} class does not define any properties");
             }
 
             var valueProps = _settings.CurrentValue.MetricsType.GetProperties()
@@ -601,7 +653,7 @@ namespace Ogle
 
             if (!valueProps.Any())
             {
-                return $"{_settings.CurrentValue.MetricsType.FullName} class does not define any properties";
+                result.Add($"{_settings.CurrentValue.MetricsType.FullName} class does not define any properties");
             }
 
             var timeBucketProp = _settings.CurrentValue.GroupKeyType.GetProperties()
@@ -611,11 +663,11 @@ namespace Ogle
 
             if (!timeBucketProp.Any())
             {
-                return $"{_settings.CurrentValue.GroupKeyType.FullName} class does not define a property decorated with [TimeBucket] attribute";
+                result.Add($"{_settings.CurrentValue.GroupKeyType.FullName} class does not define a property decorated with [TimeBucket] attribute");
             }
             if (timeBucketProp.Count > 1)
             {
-                return $"{_settings.CurrentValue.GroupKeyType.FullName} class can only define a single [TimeBucket] attribute";
+                result.Add($"{_settings.CurrentValue.GroupKeyType.FullName} class can only define a single [TimeBucket] attribute");
             }
 
             var totalProp = _settings.CurrentValue.MetricsType.GetProperties()
@@ -623,13 +675,13 @@ namespace Ogle
                                      .Select(i => i.Name.LowerCaseFirstCharacter())
                                      .ToList();
 
-            if (!timeBucketProp.Any())
+            if (!totalProp.Any())
             {
-                return $"{_settings.CurrentValue.MetricsType.FullName} class does not define a property decorated with [Total] attribute";
+                result.Add($"{_settings.CurrentValue.MetricsType.FullName} class does not define a property decorated with [Total] attribute");
             }
             if (totalProp.Count > 1)
             {
-                return $"{_settings.CurrentValue.MetricsType.FullName} class can only define a single [Total] attribute";
+                result.Add($"{_settings.CurrentValue.MetricsType.FullName} class can only define a single [Total] attribute");
             }
 
             var mandatoryProps = _settings.CurrentValue.RecordType.GetProperties()
@@ -639,7 +691,7 @@ namespace Ogle
 
             if (!mandatoryProps.Any())
             {
-                return $"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory] attribute";
+                result.Add($"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory] attribute");
             }
 
             var mandatoryLogPatternProps = _settings.CurrentValue.GroupKeyType.GetCustomAttributes(true)
@@ -648,7 +700,7 @@ namespace Ogle
 
             if (!mandatoryLogPatternProps.Any())
             {
-                return $"{_settings.CurrentValue.GroupKeyType.FullName} class is not decorated with [MandatoryLogPattern] attribute";
+                result.Add($"{_settings.CurrentValue.GroupKeyType.FullName} class is not decorated with [MandatoryLogPattern] attribute");
             }
 
             var mandatoryKeyProp = _settings.CurrentValue.RecordType.GetProperties()
@@ -657,11 +709,11 @@ namespace Ogle
                                             .ToList();
             if (!mandatoryKeyProp.Any())
             {
-                return $"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory(isKey: true)] attribute";
+                result.Add($"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [Mandatory(isKey: true)] attribute");
             }
             if (mandatoryKeyProp.Count > 1)
             {
-                return $"{_settings.CurrentValue.RecordType.FullName} class can only define a single property decorated with [Mandatory(isKey: true)] attribute";
+                result.Add($"{_settings.CurrentValue.RecordType.FullName} class can only define a single property decorated with [Mandatory(isKey: true)] attribute");
             }
 
             var logPatternProps = _settings.CurrentValue.RecordType.GetProperties()
@@ -671,39 +723,67 @@ namespace Ogle
 
             if (!logPatternProps.Any())
             {
-                return $"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [LogPattern] attribute";
+                result.Add($"{_settings.CurrentValue.RecordType.FullName} class does not define a property decorated with [LogPattern] attribute");
+            }
+
+            var equalsInfo = _settings.CurrentValue.GroupKeyType.GetMethod("Equals", new Type[] { typeof(object) });
+
+            if (equalsInfo == null || equalsInfo.DeclaringType != _settings.CurrentValue.GroupKeyType)
+            {
+                result.Add($"{_settings.CurrentValue.GroupKeyType.FullName} must override the Equals method for groupping of metrics to work");
+            }
+
+            var getHashCodeInfo = _settings.CurrentValue.GroupKeyType.GetMethod("GetHashCode", new Type[] { });
+
+            if (getHashCodeInfo == null || getHashCodeInfo.DeclaringType != _settings.CurrentValue.GroupKeyType)
+            {
+                result.Add($"{_settings.CurrentValue.GroupKeyType.FullName} must override the GetHashCode method for groupping of metrics to work");
+            }
+
+            equalsInfo = _settings.CurrentValue.RecordType.GetMethod("Equals", new Type[] { typeof(object) });
+
+            if (equalsInfo != null && equalsInfo.DeclaringType != _settings.CurrentValue.GroupKeyType)
+            {
+                result.Add($"{_settings.CurrentValue.RecordType.FullName}.Equals method needs to be declared in {_settings.CurrentValue.GroupKeyType.FullName} for groupping of metrics to work");
+            }
+
+            getHashCodeInfo = _settings.CurrentValue.RecordType.GetMethod("GetHashCode", new Type[] { });
+
+            if (getHashCodeInfo != null && getHashCodeInfo.DeclaringType != _settings.CurrentValue.GroupKeyType)
+            {
+                result.Add($"{_settings.CurrentValue.RecordType.FullName}.GetHashCode method needs to be declared in {_settings.CurrentValue.GroupKeyType.FullName} for groupping of metrics to work");
             }
 
             if (_settings.CurrentValue.DefaultMinutesPerBucket < 1)
             {
-                return $"Value must be at least one: OgleOptions.DefaultMinutesPerBucket";
+                result.Add($"Value must be at least one: OgleOptions.DefaultMinutesPerBucket");
             }
             if (_settings.CurrentValue.DefaultNumberOfBuckets < 1)
             {
-                return $"Value must be at least one: OgleOptions.DefaultNumberOfBuckets";
+                result.Add($"Value must be at least one: OgleOptions.DefaultNumberOfBuckets");
             }
             if (_settings.CurrentValue.DrillDownMinutesPerBucket < 1)
             {
-                return $"Value must be at least one: OgleOptions.DrillDownMinutesPerBucket";
+                result.Add($"Value must be at least one: OgleOptions.DrillDownMinutesPerBucket");
             }
             if (_settings.CurrentValue.DrillDownNumberOfBuckets < 1)
             {
-                return $"Value must be at least one: OgleOptions.DrillDownNumberOfBuckets";
+                result.Add($"Value must be at least one: OgleOptions.DrillDownNumberOfBuckets");
             }
             if (_settings.CurrentValue.DefaultMinutesPerBucket <= _settings.CurrentValue.DrillDownMinutesPerBucket)
             {
-                return $"OgleOptions.DefaultMinutesPerBucket must be greater than OgleOptions.DrillDownMinutesPerBucket";
+                result.Add($"OgleOptions.DefaultMinutesPerBucket must be greater than OgleOptions.DrillDownMinutesPerBucket");
             }
             if (_settings.CurrentValue.DefaultMinutesPerBucket * _settings.CurrentValue.DefaultNumberOfBuckets != 1440)
             {
-                return $"OgleOptions.DefaultMinutesPerBucket times OgleOptions.DefaultNumberOfBuckets has to be equal to number minutes per day (1440)";
+                result.Add($"OgleOptions.DefaultMinutesPerBucket times OgleOptions.DefaultNumberOfBuckets has to be equal to number minutes per day (1440)");
             }
             if (_settings.CurrentValue.DrillDownMinutesPerBucket * _settings.CurrentValue.DrillDownNumberOfBuckets != _settings.CurrentValue.DefaultMinutesPerBucket)
             {
-                return $"OgleOptions.DrillDownMinutesPerBucket times OgleOptions.DrillDownNumberOfBuckets has to be equal to OgleOptions.DefaultMinutesPerBucket ({_settings.CurrentValue.DefaultMinutesPerBucket})";
+                result.Add($"OgleOptions.DrillDownMinutesPerBucket times OgleOptions.DrillDownNumberOfBuckets has to be equal to OgleOptions.DefaultMinutesPerBucket ({_settings.CurrentValue.DefaultMinutesPerBucket})");
             }
 
-            return null;
+            return result;
         }
 
         private IActionResult FormatErrorResponse(Exception ex, int? statusCode = null)
