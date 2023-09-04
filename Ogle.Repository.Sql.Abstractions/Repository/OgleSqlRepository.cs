@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Options;
+using Ogle.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -95,6 +96,11 @@ namespace Ogle.Repository.Sql.Abstractions
             }
 
             return rowsInserted;
+        }
+
+        public Dictionary<string, string> GetConfiguration()
+        {
+            return Settings.CurrentValue.ToPropertyDictionary();
         }
 
         #endregion

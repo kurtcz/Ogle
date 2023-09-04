@@ -1,14 +1,12 @@
 ﻿using Microsoft.Extensions.Options;
-using Ogle;
+using Ogle.Extensions;
 using System;
+using System.Collections.Generic;
 using System.Data;
-using System.Reflection;
 using System.IO;
-using System.Text;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace Ogle.Repository.File
 {
@@ -132,6 +130,11 @@ namespace Ogle.Repository.File
             }
 
             return metrics.Count();
+        }
+
+        public Dictionary<string, string> GetConfiguration()
+        {
+            return Settings.CurrentValue.ToPropertyDictionary();
         }
 
         #endregion

@@ -17,9 +17,7 @@ using System.Linq;
 using System.IO;
 using System.Net.Http;
 using System.Text.RegularExpressions;
-using System.Net;
 using Ogle.Extensions;
-using Microsoft.AspNetCore.Http;
 
 namespace Ogle
 {
@@ -547,6 +545,30 @@ namespace Ogle
 				_logger.LogError(ex, ex.Message);
                 throw;
             }
+        }
+
+        [HttpGet]
+        [Route("/ogle/config")]
+        public IActionResult Configuration()
+        {
+            dynamic repo = ResolveLogMetricsRepository();
+            var repoName = repo == null ? "not set" : repo.GetType().FullName.Split('`')[0];
+            var repoSettings = (Dictionary<string, string>?)repo?.GetConfiguration();
+
+            var model = new ConfigurationViewModel
+            {
+                Layout = _settings.CurrentValue.Layout,
+                OgleRegistration = new Dictionary<string, string>
+                {
+                    { "Version", Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "null" },
+                    { "UseOgleRoutePrefix", $"\"{GetRoutePrefix()}\"" },
+                    { "Repository", repoName }
+                },
+                OgleOptions = _settings.CurrentValue.ToPropertyDictionary(),
+                OgleRepositoryOptions = repoSettings
+            };
+
+            return View(model);
         }
         #endregion
 

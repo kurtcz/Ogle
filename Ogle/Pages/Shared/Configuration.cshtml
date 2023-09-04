@@ -1,0 +1,124 @@
+﻿@using Ogle
+@model ConfigurationViewModel
+@{
+    Layout = Model.Layout ?? "_OgleLayout";
+    ViewBag.Title = "View Logs";
+}
+<style>
+    @@media (prefers-color-scheme: dark) {
+        body {
+            background-color: black;
+            color: white;
+        }
+    }
+
+    #logo {
+        float: right;
+        width: 112px;
+        height: auto;
+        margin-block: -5px;
+        filter: grayscale(100%);
+    }
+
+    #ogleContainer {
+        font-size: smaller;
+    }
+
+    h2, table {
+        margin-bottom: 25px;
+    }
+
+    th, td {
+        padding-top: 2px;
+        padding-bottom: 2px;
+    }
+
+    th:first-of-type, td:first-of-type {
+        padding-right: 50px;
+    }
+
+    table thead {
+        border-bottom: 1px solid;
+    }
+
+    @@media (prefers-color-scheme: light) {
+        table tbody tr {
+            border-bottom: 1px dotted lightgray;
+        }
+    }
+
+    @@media (prefers-color-scheme: dark) {
+        table tbody tr {
+            border-bottom: 1px dotted dimgray;
+        }
+    }
+</style>
+
+<div id="ogleContainer">
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="~/_content/Ogle/images/ogle-inverted.svg" />
+        <source media="(prefers-color-scheme: light)" srcset="~/_content/Ogle/images/ogle.svg" />
+        <img id="logo" src="~/_content/Ogle/images/ogle.svg" />
+    </picture>
+
+    <h2>Configuration</h2>
+
+    <h5>Ogle Registration</h5>
+    <table>
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var kvp in Model.OgleRegistration)
+            {
+                <tr>
+                    <td>@Html.Raw(kvp.Key)</td>
+                    <td>@Html.Raw(kvp.Value)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h5>Ogle Options</h5>
+    <table>
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var kvp in Model.OgleOptions)
+            {
+                <tr>
+                    <td>@Html.Raw(kvp.Key)</td>
+                    <td>@Html.Raw(kvp.Value)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Model.OgleRepositoryOptions != null)
+    {
+        <h5>Ogle Repository Options</h5>
+        <table>
+            <thead>
+                <tr>
+                    <th>Option</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var kvp in Model.OgleRepositoryOptions)
+                {
+                    <tr>
+                        <td>@Html.Raw(kvp.Key)</td>
+                        <td>@Html.Raw(kvp.Value)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
