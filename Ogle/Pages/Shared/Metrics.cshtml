@@ -11,55 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
 <script src="~/_content/Ogle/js/chart.plugin.datatable-filler.js"></script>
 
+<link rel="stylesheet" href="~/_content/Ogle/css/site.css" />
 <style>
-    @@media (prefers-color-scheme: dark) {
-        body {
-            background-color: black;
-            color: white;
-        }
-    }
-
-    #ogleContainer {
-        font-size: smaller;
-    }
-
-    #errorContainer {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        background-color: #ffdddd;
-        color: red;
-        border: 2px solid red;
-        display: none;
-        z-index: 1000;
-        opacity: 0.9;
-    }
-
-    .closeButton {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 21px;
-        height: 21px;
-        font-size: 32px;
-        font-family: Arial, Helvetica, sans-serif;
-        line-height: 0.5;
-        scale: 0.6;
-        cursor: pointer;
-    }
-
-    .errorMessage {
-        margin: 5px 20px 5px 20px;
-    }
-
-    #logo {
-        float: right;
-        width: 112px;
-        right: 0;
-        margin-top: -15px;
-    }
-
     .mainGrid {
         clear: both;
         display: grid;
@@ -149,50 +102,6 @@
         border: 2px solid #4070d0;
         background-color: lightyellow;
     }
-
-    #loader {
-        display: none;
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        z-index: 1;
-        width: 150px;
-        height: 150px;
-        margin: -75px 0 0 -75px;
-        border: 16px solid #f3f3f3;
-        border-radius: 50%;
-        border-top: 16px solid #3498db;
-        width: 120px;
-        height: 120px;
-        animation: spin 2s linear infinite;
-    }
-
-    @@keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-
-    .animate-bottom {
-        position: relative;
-        animation-name: animebottom;
-        animation-duration: 1s;
-    }
-
-    @@keyframes animatebottom {
-        from {
-            bottom: -100px;
-        }
-
-        to {
-            bottom: 0;
-            opacity: 1
-        }
-    }
 </style>
 
 <div id="ogleContainer">
@@ -232,108 +141,108 @@
             </div>
         </div>
         <div class="left">
-        @if (Model.FilterPosition == FilterControlsPosition.Left)
-        {
-            <div id="filterContainer">
-                <h6>Filter:</h6>
-                @{
-                    i = 0;
-                    foreach (var prop in Model.KeyProperties)
-                    {
-                        if (prop != Model.TimeBucketProperty)
+            @if (Model.FilterPosition == FilterControlsPosition.Left)
+            {
+                <div id="filterContainer">
+                    <h6>Filter:</h6>
+                    @{
+                        i = 0;
+                        foreach (var prop in Model.KeyProperties)
                         {
-                            @Model.KeyPropertyDisplayNames[i] <br />
-                            <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
-                                <option selected="selected">All</option>
-                            </select> <br />
+                            if (prop != Model.TimeBucketProperty)
+                            {
+                                @Model.KeyPropertyDisplayNames[i] <br />
+                                <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
+                                    <option selected="selected">All</option>
+                                </select> <br />
+                            }
+                            i++;
                         }
-                        i++;
                     }
-                }
-            </div>
-        }
-        @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Left)
-        {
-            <div id="viewButtonsLeftContainer" class="viewButtonsContainer">
-                @{
-                    i = 0;
-                    foreach (var prop in Model.ValueProperties)
-                    {
-                        <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
-                        i++;
+                </div>
+            }
+            @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Left)
+            {
+                <div id="viewButtonsLeftContainer" class="viewButtonsContainer">
+                    @{
+                        i = 0;
+                        foreach (var prop in Model.ValueProperties)
+                        {
+                            <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                            i++;
+                        }
                     }
-                }
-            </div>
-        }
+                </div>
+            }
         </div>
         <div class="main">
             <div id="chartContainer">
                 <h4 id="chartLabel"></h4>
                 <div id="loader" class="loader"></div>
                 <canvas id="canvas"></canvas>
-            </div>            
-        @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Center)
-        { 
-            <div id="viewButtonsContainer" class="viewButtonsContainer">
-            @{
-                i = 0;
-                foreach (var prop in Model.ValueProperties)
-                {
-                    <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
-                    i++;
-                }
-            }
             </div>
-        }
+            @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Center)
+            {
+                <div id="viewButtonsContainer" class="viewButtonsContainer">
+                    @{
+                        i = 0;
+                        foreach (var prop in Model.ValueProperties)
+                        {
+                            <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                            i++;
+                        }
+                    }
+                </div>
+            }
         </div>
         <div class="right">
-        @if (Model.FilterPosition == FilterControlsPosition.Right)
-        {
-            <div id="filterContainer">
-            <h6>Filter:</h6>
-            @{
-                i = 0;
-                foreach (var prop in Model.KeyProperties)
-                {
-                    if (prop != Model.TimeBucketProperty)
-                    {
-                        @Model.KeyPropertyDisplayNames[i] <br />
-                        <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
-                            <option selected="selected">All</option>
-                        </select> <br />
+            @if (Model.FilterPosition == FilterControlsPosition.Right)
+            {
+                <div id="filterContainer">
+                    <h6>Filter:</h6>
+                    @{
+                        i = 0;
+                        foreach (var prop in Model.KeyProperties)
+                        {
+                            if (prop != Model.TimeBucketProperty)
+                            {
+                                @Model.KeyPropertyDisplayNames[i] <br />
+                                <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
+                                    <option selected="selected">All</option>
+                                </select> <br />
+                            }
+                            i++;
+                        }
                     }
-                    i++;
-                }
+                </div>
             }
-            </div>
-        }
-        @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Right)
-        {
-            <div id="viewButtonsRightContainer" class="viewButtonsContainer">
-            @{
-                i = 0;
-                foreach (var prop in Model.ValueProperties)
-                {
-                    <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
-                    i++;
-                }
+            @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Right)
+            {
+                <div id="viewButtonsRightContainer" class="viewButtonsContainer">
+                    @{
+                        i = 0;
+                        foreach (var prop in Model.ValueProperties)
+                        {
+                            <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                            i++;
+                        }
+                    }
+                </div>
             }
-            </div>
-        }
         </div>
         <div class="bottom">
             <div id="viewButtonsBottomContainer" class="viewButtonsContainer">
-            @{
-                if (Model.ViewButtonsPosition == MetricsButtonsPosition.Bottom)
-                {
-                    i = 0;
-                    foreach (var prop in Model.ValueProperties)
+                @{
+                    if (Model.ViewButtonsPosition == MetricsButtonsPosition.Bottom)
                     {
-                        <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
-                        i++;
+                        i = 0;
+                        foreach (var prop in Model.ValueProperties)
+                        {
+                            <input type="button" value="@(Model.ValuePropertyDisplayNames[i])" data-type="@prop" onclick="onViewButtonClick(event);" />
+                            i++;
+                        }
                     }
                 }
-            }
             </div>
             <div id="msg"></div>
             <div id="dataTable"></div>

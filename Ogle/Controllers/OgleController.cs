@@ -18,18 +18,19 @@ using System.IO;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using Ogle.Extensions;
+using Microsoft.AspNetCore.Html;
 
 namespace Ogle
 {
-	public class OgleController : Controller
-	{
-		private readonly ILogger<OgleController> _logger;
-		private readonly IOptionsMonitor<OgleOptions> _settings;
-		private readonly IServiceProvider _serviceProvider;
+    public class OgleController : Controller
+    {
+        private readonly ILogger<OgleController> _logger;
+        private readonly IOptionsMonitor<OgleOptions> _settings;
+        private readonly IServiceProvider _serviceProvider;
 
-		public OgleController(ILogger<OgleController> logger, IOptionsMonitor<OgleOptions> settings, IServiceProvider serviceProvider)
-		{
-			_logger = logger ?? NullLogger<OgleController>.Instance;
+        public OgleController(ILogger<OgleController> logger, IOptionsMonitor<OgleOptions> settings, IServiceProvider serviceProvider)
+        {
+            _logger = logger ?? NullLogger<OgleController>.Instance;
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }
@@ -41,7 +42,7 @@ namespace Ogle
         [Route("/ogle/Logs")]
         [Route("/ogle/Index")]
         public IActionResult Index(string? id, string? hostName, DateTime? date, bool highlight = true)
-		{
+        {
             try
             {
                 var errorMessages = ValidateLogsConfiguration();
@@ -57,18 +58,18 @@ namespace Ogle
                 date ??= DateTime.Today.AddDays(-1);
 
                 var model = new LogsViewModel
-				{
+                {
                     Layout = _settings.CurrentValue.Layout,
                     RoutePrefix = GetRoutePrefix(),
-					Id = id,
-					Date = DateOnly.FromDateTime(date.Value),
-					HostName = hostName,
-					Highlight = highlight,
-					ServerSelectList = _settings.CurrentValue.Hostnames.Select(i => new SelectListItem
-					{
-						Text = i,
-						Value = GetHostnameUrl(Request.Scheme, i).ToString()
-					}).ToList()
+                    Id = id,
+                    Date = DateOnly.FromDateTime(date.Value),
+                    HostName = hostName,
+                    Highlight = highlight,
+                    ServerSelectList = _settings.CurrentValue.Hostnames.Select(i => new SelectListItem
+                    {
+                        Text = i,
+                        Value = GetHostnameUrl(Request.Scheme, i).ToString()
+                    }).ToList()
                 };
 
                 return View("Logs", model);
@@ -80,10 +81,10 @@ namespace Ogle
             }
         }
 
-		[HttpGet]
+        [HttpGet]
         [Route("/ogle/BrowseLogFiles")]
         public async Task<IActionResult> BrowseLogFiles(DateTime? date, string hostname)
-		{
+        {
             try
             {
                 if (!string.IsNullOrWhiteSpace(hostname))
@@ -160,39 +161,39 @@ namespace Ogle
         [HttpGet]
         [Route("/ogle/GetLogs")]
         public async Task<IActionResult> GetLogs(DateTime? date, string id, bool highlight = true)
-		{
+        {
             try
             {
-				date ??= DateTime.Today.AddDays(-1);
+                date ??= DateTime.Today.AddDays(-1);
 
-				var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
+                var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
                 string result;
-				
-				if(id == null)
-				{
-					return BadRequest("Please specify a request id or a unique search term");
-				}
-				else if(!searchPatternMatch.Success)
-				{
+
+                if (id == null)
+                {
+                    return BadRequest("Please specify a request id or a unique search term");
+                }
+                else if (!searchPatternMatch.Success)
+                {
                     return BadRequest($"Search term has to match {_settings.CurrentValue.AllowedSearchPattern} regular expresion pattern");
                 }
-				else
-				{
+                else
+                {
                     dynamic logService = LogServiceFactory.CreateInstance(_settings);
 
                     result = await (Task<string>)logService.GetLogContent(id, DateOnly.FromDateTime(date.Value));
 
-					if (string.IsNullOrEmpty(result))
-					{
-						return NoContent();
-					}
-					else if (highlight)
-					{
+                    if (string.IsNullOrEmpty(result))
+                    {
+                        return NoContent();
+                    }
+                    else if (highlight)
+                    {
                         result = (string)logService.HighlightLogContent(result, id);
                     }
                 }
 
-				return Content(result);
+                return Content(result);
             }
             catch (Exception ex)
             {
@@ -201,46 +202,46 @@ namespace Ogle
             }
         }
 
-		[HttpGet]
-		[Route("/ogle/GetLogsFromAllServers")]
-		public async Task<IActionResult> GetLogsFromAllServers(DateTime? date, string? hostname, string id, bool? highlight = true)
-		{
-			try
-			{
-				date ??= DateTime.Today.AddDays(-1);
+        [HttpGet]
+        [Route("/ogle/GetLogsFromAllServers")]
+        public async Task<IActionResult> GetLogsFromAllServers(DateTime? date, string? hostname, string id, bool? highlight = true)
+        {
+            try
+            {
+                date ??= DateTime.Today.AddDays(-1);
 
                 var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
                 string result;
 
-				if (id == null)
-				{
-					result = "Please specify a request id or a unique search term";
-				}
-				else if (!searchPatternMatch.Success)
-				{
-					result = $"Search term has to match {_settings.CurrentValue.AllowedSearchPattern} regular expresion pattern";
-				}
-				else
-				{
-					var endpoint = $"/{GetRoutePrefix()}/GetLogs?date={date.Value.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
-					var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
+                if (id == null)
+                {
+                    result = "Please specify a request id or a unique search term";
+                }
+                else if (!searchPatternMatch.Success)
+                {
+                    result = $"Search term has to match {_settings.CurrentValue.AllowedSearchPattern} regular expresion pattern";
+                }
+                else
+                {
+                    var endpoint = $"/{GetRoutePrefix()}/GetLogs?date={date.Value.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
+                    var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
-					if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
-					{
-						result = string.Join("\n", responses.Values.Select(i => i.Error).Distinct());
+                    if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
+                    {
+                        result = string.Join("\n", responses.Values.Select(i => i.Error).Distinct());
 
-						if (string.IsNullOrWhiteSpace(result))
-						{
-							result = $"Search failed for {date:yyyy-MM-dd}";
+                        if (string.IsNullOrWhiteSpace(result))
+                        {
+                            result = $"Search failed for {date:yyyy-MM-dd}";
                         }
 
                         //unexpected error uses a text/plain mime type and a 500 status code
                         return Problem(result);
-					}
-					else
-					{
-						result = string.Join("\n", responses.Where(i => !string.IsNullOrWhiteSpace(i.Value.Payload))
-															.Select(i => i.Value.Payload));
+                    }
+                    else
+                    {
+                        result = string.Join("\n", responses.Where(i => !string.IsNullOrWhiteSpace(i.Value.Payload))
+                                                            .Select(i => i.Value.Payload));
                         if (string.IsNullOrWhiteSpace(result))
                         {
                             result = $"Request id or search term not found in logs for {date:yyyy-MM-dd}";
@@ -250,15 +251,15 @@ namespace Ogle
                             //search result from servers uses a text/html mime type
                             return Content($"<pre>{result}</pre>", "text/html");
                         }
-					}
-				}
+                    }
+                }
 
                 //error message uses a text/plain mime type
                 return Content(result);
             }
             catch (Exception ex)
-			{
-				_logger.LogError(ex, ex.Message);
+            {
+                _logger.LogError(ex, ex.Message);
                 throw;
             }
         }
@@ -266,14 +267,14 @@ namespace Ogle
         [HttpGet]
         [Route("/ogle/DownloadLog")]
         public IActionResult DownloadLog(string log)
-		{
+        {
             try
             {
                 dynamic logService = LogServiceFactory.CreateInstance(_settings);
-				var stream = logService.GetFileStreamWithoutLocking(log);
+                var stream = logService.GetFileStreamWithoutLocking(log);
 
-				//asp.net core will take care of disposing the stream
-				return File(stream, "text/plain", log);
+                //asp.net core will take care of disposing the stream
+                return File(stream, "text/plain", log);
             }
             catch (Exception ex)
             {
@@ -285,21 +286,21 @@ namespace Ogle
         [HttpGet]
         [Route("/ogle/GetRecords")]
         public async Task<IActionResult> GetRecords(DateTime? date)
-		{
+        {
             try
             {
-				date ??= DateTime.Today.AddDays(-1);
+                date ??= DateTime.Today.AddDays(-1);
 
-				var options = new LogReaderOptions
-				{
-					Date = DateOnly.FromDateTime(date.Value),
-					MinutesPerBucket = _settings.CurrentValue.DefaultMinutesPerBucket,
-					NumberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets
-				};
-				dynamic logService = LogServiceFactory.CreateInstance(_settings);
-				var records = await logService.GetLogRecords(options);
+                var options = new LogReaderOptions
+                {
+                    Date = DateOnly.FromDateTime(date.Value),
+                    MinutesPerBucket = _settings.CurrentValue.DefaultMinutesPerBucket,
+                    NumberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets
+                };
+                dynamic logService = LogServiceFactory.CreateInstance(_settings);
+                var records = await logService.GetLogRecords(options);
 
-				return Ok(records);
+                return Ok(records);
             }
             catch (Exception ex)
             {
@@ -309,9 +310,9 @@ namespace Ogle
         }
 
         [HttpGet]
-		[Route("/ogle/Metrics")]
+        [Route("/ogle/Metrics")]
         public IActionResult Metrics(DateTime? date, LogReaderOptions options, bool autoFetchData, bool canDrillDown = true)
-		{
+        {
             try
             {
                 var errorMessages = ValidateMetricsConfiguration();
@@ -329,68 +330,68 @@ namespace Ogle
                 options.Date ??= DateOnly.FromDateTime(date.Value);
                 options.MinutesPerBucket ??= _settings.CurrentValue.DefaultMinutesPerBucket;
                 options.NumberOfBuckets ??= _settings.CurrentValue.DefaultNumberOfBuckets;
-				
-				var keyProps = _settings.CurrentValue.GroupKeyType.GetProperties()
-										.Select(i => i.Name)
-										.ToArray();
-				var keyDisplayNames = _settings.CurrentValue.GroupKeyType.GetProperties()
-											   .Select(i => (i.GetCustomAttribute(typeof(DisplayNameAttribute))
-															 as DisplayNameAttribute)?.DisplayName ?? i.Name)
-											   .ToArray();
-				var valueProps = _settings.CurrentValue.MetricsType.GetProperties()
-										  .Where(i => !keyProps.Contains(i.Name))
-										  .Select(i => i.Name)
+
+                var keyProps = _settings.CurrentValue.GroupKeyType.GetProperties()
+                                        .Select(i => i.Name)
+                                        .ToArray();
+                var keyDisplayNames = _settings.CurrentValue.GroupKeyType.GetProperties()
+                                               .Select(i => (i.GetCustomAttribute(typeof(DisplayNameAttribute))
+                                                             as DisplayNameAttribute)?.DisplayName ?? i.Name)
+                                               .ToArray();
+                var valueProps = _settings.CurrentValue.MetricsType.GetProperties()
+                                          .Where(i => !keyProps.Contains(i.Name))
+                                          .Select(i => i.Name)
                                           .ToArray();
-				var valueTypes = _settings.CurrentValue.MetricsType.GetProperties()
+                var valueTypes = _settings.CurrentValue.MetricsType.GetProperties()
                                           .Where(i => !keyProps.Contains(i.Name))
                                           .Select(i => i.PropertyType.Name)
                                           .ToArray();
-				var valueDisplayNames = _settings.CurrentValue.MetricsType.GetProperties()
-												 .Where(i => !keyProps.Contains(i.Name))
-												 .Select(i => (i.GetCustomAttribute(typeof(DisplayNameAttribute))
-															   as DisplayNameAttribute)?.DisplayName ?? i.Name)
-												 .ToArray();
-				var aggregationFunc = _settings.CurrentValue.MetricsType.GetProperties()
-											   .Where(i => !keyProps.Contains(i.Name))
-											   .Select(i => i.GetCustomAttribute(typeof(AggregateAttribute)) as AggregateAttribute)
-											   .Select(i => i != null ? i.AggregationOperation.ToString().LowerCaseFirstCharacter() : "sum")
-											   .ToArray();
-				var timeBuckets = GenerateTimeBuckets(options);
-				var timeBucketProp = _settings.CurrentValue.MetricsType.GetProperties()
-											  .Where(i => i.GetCustomAttributes(true).Any(j => j is TimeBucketAttribute))
-											  .Select(i => i.Name.LowerCaseFirstCharacter())
-											  .Single();
-				var totalProp = _settings.CurrentValue.MetricsType.GetProperties()
+                var valueDisplayNames = _settings.CurrentValue.MetricsType.GetProperties()
+                                                 .Where(i => !keyProps.Contains(i.Name))
+                                                 .Select(i => (i.GetCustomAttribute(typeof(DisplayNameAttribute))
+                                                               as DisplayNameAttribute)?.DisplayName ?? i.Name)
+                                                 .ToArray();
+                var aggregationFunc = _settings.CurrentValue.MetricsType.GetProperties()
+                                               .Where(i => !keyProps.Contains(i.Name))
+                                               .Select(i => i.GetCustomAttribute(typeof(AggregateAttribute)) as AggregateAttribute)
+                                               .Select(i => i != null ? i.AggregationOperation.ToString().LowerCaseFirstCharacter() : "sum")
+                                               .ToArray();
+                var timeBuckets = GenerateTimeBuckets(options);
+                var timeBucketProp = _settings.CurrentValue.MetricsType.GetProperties()
+                                              .Where(i => i.GetCustomAttributes(true).Any(j => j is TimeBucketAttribute))
+                                              .Select(i => i.Name.LowerCaseFirstCharacter())
+                                              .Single();
+                var totalProp = _settings.CurrentValue.MetricsType.GetProperties()
                                          .Where(i => i.GetCustomAttributes(true).Any(j => j is TotalAttribute))
                                          .Select(i => i.Name.LowerCaseFirstCharacter())
                                          .SingleOrDefault() ?? valueProps.First();
 
                 return View(new MetricsViewModel
-				{
+                {
                     Layout = _settings.CurrentValue.Layout,
                     RoutePrefix = GetRoutePrefix(),
-					ServerUrls = _settings.CurrentValue.Hostnames.Select(i => GetHostnameUrl(Request.Scheme, i).ToString()).ToArray(),
-					Date = options.Date.Value,
-					HourFrom = options.HourFrom,
-					MinuteFrom = options.MinuteFrom,
-					MinutesPerBucket = options.MinutesPerBucket.Value,
-					NumberOfBuckets = options.NumberOfBuckets.Value,
-					DrillDownMinutesPerBucket = _settings.CurrentValue.DrillDownMinutesPerBucket,
-					DrillDownNumberOfBuckets = _settings.CurrentValue.DrillDownNumberOfBuckets,
-					ViewButtonsPosition = _settings.CurrentValue.MetricsButtonsPosition,
+                    ServerUrls = _settings.CurrentValue.Hostnames.Select(i => GetHostnameUrl(Request.Scheme, i).ToString()).ToArray(),
+                    Date = options.Date.Value,
+                    HourFrom = options.HourFrom,
+                    MinuteFrom = options.MinuteFrom,
+                    MinutesPerBucket = options.MinutesPerBucket.Value,
+                    NumberOfBuckets = options.NumberOfBuckets.Value,
+                    DrillDownMinutesPerBucket = _settings.CurrentValue.DrillDownMinutesPerBucket,
+                    DrillDownNumberOfBuckets = _settings.CurrentValue.DrillDownNumberOfBuckets,
+                    ViewButtonsPosition = _settings.CurrentValue.MetricsButtonsPosition,
                     FilterPosition = _settings.CurrentValue.FilterControlsPosition,
                     AutoFetchData = autoFetchData,
-					CanDrillDown = canDrillDown,
-					KeyProperties = keyProps.Select(i => i.LowerCaseFirstCharacter()).ToArray(),
-					KeyPropertyDisplayNames = keyDisplayNames,
-					ValueProperties = valueProps.Select(i => i.LowerCaseFirstCharacter()).ToArray(),
-					ValuePropertyTypes = valueTypes,
-					ValuePropertyDisplayNames = valueDisplayNames,
-					ValuePropertyAggregationOperation = aggregationFunc,
-					TimeBuckets = timeBuckets,
-					TimeBucketProperty = timeBucketProp,
-					TotalProperty = totalProp
-				});
+                    CanDrillDown = canDrillDown,
+                    KeyProperties = keyProps.Select(i => i.LowerCaseFirstCharacter()).ToArray(),
+                    KeyPropertyDisplayNames = keyDisplayNames,
+                    ValueProperties = valueProps.Select(i => i.LowerCaseFirstCharacter()).ToArray(),
+                    ValuePropertyTypes = valueTypes,
+                    ValuePropertyDisplayNames = valueDisplayNames,
+                    ValuePropertyAggregationOperation = aggregationFunc,
+                    TimeBuckets = timeBuckets,
+                    TimeBucketProperty = timeBucketProp,
+                    TotalProperty = totalProp
+                });
             }
             catch (Exception ex)
             {
@@ -402,7 +403,7 @@ namespace Ogle
         [HttpGet]
         [Route("/ogle/GetMetrics")]
         public async Task<IActionResult> GetMetrics(DateTime? date, LogReaderOptions options)
-		{
+        {
             try
             {
                 date ??= DateTime.Today.AddDays(-1);
@@ -411,11 +412,11 @@ namespace Ogle
                 options.MinutesPerBucket ??= _settings.CurrentValue.DefaultMinutesPerBucket;
                 options.NumberOfBuckets ??= _settings.CurrentValue.DefaultNumberOfBuckets;
 
-				var repo = ResolveLogMetricsRepository();
-				var logService = LogServiceFactory.CreateInstance(_settings, repo);
-				var metrics = await logService.GetLogMetrics(options, _settings.CurrentValue.GroupFunction);
+                var repo = ResolveLogMetricsRepository();
+                var logService = LogServiceFactory.CreateInstance(_settings, repo);
+                var metrics = await logService.GetLogMetrics(options, _settings.CurrentValue.GroupFunction);
 
-				return Json(metrics);
+                return Json(metrics);
             }
             catch (Exception ex)
             {
@@ -427,7 +428,7 @@ namespace Ogle
         [HttpGet]
         [Route("/ogle/GetMetricsFromAllServers")]
         public async Task<IActionResult> GetMetricsFromAllServers(DateTime? date, LogReaderOptions options)
-		{
+        {
             try
             {
                 date ??= DateTime.Today.AddDays(-1);
@@ -436,22 +437,22 @@ namespace Ogle
                 options.MinutesPerBucket ??= _settings.CurrentValue.DefaultMinutesPerBucket;
                 options.NumberOfBuckets ??= _settings.CurrentValue.DefaultNumberOfBuckets;
 
-				var repo = ResolveLogMetricsRepository();
-				var detail = options.MinutesPerBucket == _settings.CurrentValue.DrillDownMinutesPerBucket;
+                var repo = ResolveLogMetricsRepository();
+                var detail = options.MinutesPerBucket == _settings.CurrentValue.DrillDownMinutesPerBucket;
 
-				if (repo != null)
-				{
-					var logService = LogServiceFactory.CreateInstance(_settings, repo);
+                if (repo != null)
+                {
+                    var logService = LogServiceFactory.CreateInstance(_settings, repo);
 
-					if (await logService.HasLogMetrics(options.Date.Value, detail))
-					{
-						var metrics = await logService.GetLogMetrics(options, _settings.CurrentValue.GroupFunction);
+                    if (await logService.HasLogMetrics(options.Date.Value, detail))
+                    {
+                        var metrics = await logService.GetLogMetrics(options, _settings.CurrentValue.GroupFunction);
 
-						return Json(metrics);
-					}
-				}
+                        return Json(metrics);
+                    }
+                }
 
-				var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
+                var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
                 var responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
                 if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
@@ -470,26 +471,26 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-				throw;
+                throw;
             }
         }
 
         [HttpGet]
         [Route("/ogle/SaveMetricsFromAllServers")]
         public async Task<IActionResult> SaveMetricsFromAllServers(DateTime? date)
-		{
-			try
-			{
-				date ??= DateTime.Today.AddDays(-1);
+        {
+            try
+            {
+                date ??= DateTime.Today.AddDays(-1);
 
-				var dateOnly = DateOnly.FromDateTime(date.Value);
-				var repo = ResolveLogMetricsRepository();
-				var logService = LogServiceFactory.CreateInstance(_settings, repo);
+                var dateOnly = DateOnly.FromDateTime(date.Value);
+                var repo = ResolveLogMetricsRepository();
+                var logService = LogServiceFactory.CreateInstance(_settings, repo);
 
-				if (await logService.HasLogMetrics(dateOnly, false))
-				{
-					await logService.DeleteLogMetrics(dateOnly, false);
-				}
+                if (await logService.HasLogMetrics(dateOnly, false))
+                {
+                    await logService.DeleteLogMetrics(dateOnly, false);
+                }
                 if (await logService.HasLogMetrics(dateOnly, true))
                 {
                     await logService.DeleteLogMetrics(dateOnly, true);
@@ -508,8 +509,8 @@ namespace Ogle
                 {
                     var rowsSaved = 0L;
                     var metrics = responses.Where(i => i.Value.Payload != null)
-										   .SelectMany(i => i.Value.Payload)
-										   .ToArray();
+                                           .SelectMany(i => i.Value.Payload)
+                                           .ToArray();
 
                     //2nd save metrics using detailed groupping
                     numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets * _settings.CurrentValue.DrillDownNumberOfBuckets;
@@ -528,21 +529,21 @@ namespace Ogle
                                                        .ToArray();
 
                         if (Enumerable.Any(metrics))
-						{
-							rowsSaved = await logService.SaveLogMetrics(dateOnly, ConvertToMetricsType(metrics), false);
-						}
+                        {
+                            rowsSaved = await logService.SaveLogMetrics(dateOnly, ConvertToMetricsType(metrics), false);
+                        }
                         if (Enumerable.Any(detailedMetrics))
                         {
                             detailedRowsSaved = await logService.SaveLogMetrics(dateOnly, ConvertToMetricsType(detailedMetrics), true);
                         }
 
                         return Ok(new[] { rowsSaved, detailedRowsSaved });
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, ex.Message);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
                 throw;
             }
         }
@@ -570,6 +571,7 @@ namespace Ogle
 
             return View(model);
         }
+
         #endregion
 
         #region Private methods
@@ -630,7 +632,7 @@ namespace Ogle
         }
 
         private IEnumerable<string> ValidateMetricsConfiguration()
-		{
+        {
             var result = new List<string>();
 
             if (_settings.CurrentValue.GroupKeyType == null)
@@ -809,49 +811,41 @@ namespace Ogle
         }
 
         private IActionResult FormatErrorResponse(Exception ex, int? statusCode = null)
-		{
+        {
             return Problem($"{ex.GetType()}: {ex.Message}\n{ex.StackTrace}", statusCode: statusCode, title: ex.Message, type: ex.GetType().ToString());
         }
 
-		private string GetRoutePrefix()
-		{
-			var route = ControllerContext.ActionDescriptor.AttributeRouteInfo.Template;
-			var slashIndex = route.LastIndexOf('/');
-
-			if (slashIndex >= 0)
-			{
-				return route.Substring(0, slashIndex);
-			}
-
-			return route;
+        private string GetRoutePrefix()
+        {
+            return ControllerContext.GetRoutePrefix();
         }
 
         private static string[] GenerateTimeBuckets(LogReaderOptions options)
-		{
-			var t = new TimeOnly(options.HourFrom, options.MinuteFrom);
-			var buckets = Enumerable.Range(0, options.NumberOfBuckets.Value)
-									.Select(i => $"\"{t.AddMinutes(i * options.MinutesPerBucket.Value).ToString("HH:mm")}\"")
-									.ToArray();
+        {
+            var t = new TimeOnly(options.HourFrom, options.MinuteFrom);
+            var buckets = Enumerable.Range(0, options.NumberOfBuckets.Value)
+                                    .Select(i => $"\"{t.AddMinutes(i * options.MinutesPerBucket.Value).ToString("HH:mm")}\"")
+                                    .ToArray();
 
-			return buckets;
-		}
+            return buckets;
+        }
 
-		private object? ResolveLogMetricsRepository()
-		{
-			var func = GetType().GetMethod("ResolveLogMetricsRepositoryImpl", BindingFlags.Instance | BindingFlags.NonPublic)
-								.MakeGenericMethod(_settings.CurrentValue.MetricsType);
-			var repo = func.Invoke(this, new object[0]);
+        private object? ResolveLogMetricsRepository()
+        {
+            var func = GetType().GetMethod("ResolveLogMetricsRepositoryImpl", BindingFlags.Instance | BindingFlags.NonPublic)
+                                .MakeGenericMethod(_settings.CurrentValue.MetricsType);
+            var repo = func.Invoke(this, new object[0]);
 
-			return repo;
-		}
+            return repo;
+        }
 
-		private ILogMetricsRepository<T> ResolveLogMetricsRepositoryImpl<T>()
-		{
-			return _serviceProvider.GetService<ILogMetricsRepository<T>>();
-		}
+        private ILogMetricsRepository<T> ResolveLogMetricsRepositoryImpl<T>()
+        {
+            return _serviceProvider.GetService<ILogMetricsRepository<T>>();
+        }
 
-		private dynamic ConvertToMetricsType(object response)
-		{
+        private dynamic ConvertToMetricsType(object response)
+        {
             var func = GetType().GetMethod("ConvertResponseToMetricsTypeImpl", BindingFlags.Instance | BindingFlags.NonPublic)
                                 .MakeGenericMethod(_settings.CurrentValue.MetricsType);
             var converted = func.Invoke(this, new object[] { response });
@@ -861,69 +855,69 @@ namespace Ogle
 
         private IEnumerable<T> ConvertResponseToMetricsTypeImpl<T>(IEnumerable<object> response)
         {
-			return response.Cast<T>();
-		}
+            return response.Cast<T>();
+        }
 
-		private UriBuilder GetHostnameUrl(string scheme, string hostname, string path = null)
-		{
-			var infoUrlBuilder = new UriBuilder(scheme, hostname);
-			var httpsPort = _settings.CurrentValue.HttpsPort > 0 ? _settings.CurrentValue.HttpsPort : -1;
+        private UriBuilder GetHostnameUrl(string scheme, string hostname, string path = null)
+        {
+            var infoUrlBuilder = new UriBuilder(scheme, hostname);
+            var httpsPort = _settings.CurrentValue.HttpsPort > 0 ? _settings.CurrentValue.HttpsPort : -1;
             var httpPort = _settings.CurrentValue.HttpPort > 0 ? _settings.CurrentValue.HttpPort : -1;
 
             infoUrlBuilder.Port = scheme == "https" ? httpsPort : httpPort;
 
-			if (!string.IsNullOrEmpty(path))
-			{
-				var queryStringIndex = path.IndexOf('?');
+            if (!string.IsNullOrEmpty(path))
+            {
+                var queryStringIndex = path.IndexOf('?');
 
-				if (queryStringIndex >= 0)
-				{
-					infoUrlBuilder.Path = path[..queryStringIndex];
-					infoUrlBuilder.Query = path[(queryStringIndex + 1)..];
-				}
-				else
-				{
-					infoUrlBuilder.Path = path;
-				}
-			}
+                if (queryStringIndex >= 0)
+                {
+                    infoUrlBuilder.Path = path[..queryStringIndex];
+                    infoUrlBuilder.Query = path[(queryStringIndex + 1)..];
+                }
+                else
+                {
+                    infoUrlBuilder.Path = path;
+                }
+            }
 
-			return infoUrlBuilder;
-		}
+            return infoUrlBuilder;
+        }
 
         private async Task<Dictionary<string, NodeResponse<TServerResponse>>> CollateJsonResponsesFromServers<TServerResponse>(string urlPath)
             where TServerResponse : class
         {
-			return await CollateJsonResponsesFromServers<TServerResponse>(null, urlPath);
+            return await CollateJsonResponsesFromServers<TServerResponse>(null, urlPath);
         }
 
-		private async Task<Dictionary<string, NodeResponse<TServerResponse>>> CollateJsonResponsesFromServers<TServerResponse>(string? hostname, string urlPath)
-            where TServerResponse: class
+        private async Task<Dictionary<string, NodeResponse<TServerResponse>>> CollateJsonResponsesFromServers<TServerResponse>(string? hostname, string urlPath)
+            where TServerResponse : class
         {
-			var hostnames = string.IsNullOrEmpty(hostname) ? _settings.CurrentValue.Hostnames : new[] { hostname };
-			var result = new ConcurrentBag<(string, NodeResponse<TServerResponse>)>();
-			var tasks = hostnames.Select(async hostname =>
-			{
-				UriBuilder infoUrlBuilder = GetHostnameUrl(Request.Scheme, hostname, urlPath);
-				var actualServerUrl = $"{infoUrlBuilder.Scheme}://{infoUrlBuilder.Host}:{infoUrlBuilder.Port}";
-				var infoUrl = infoUrlBuilder.ToString();
+            var hostnames = string.IsNullOrEmpty(hostname) ? _settings.CurrentValue.Hostnames : new[] { hostname };
+            var result = new ConcurrentBag<(string, NodeResponse<TServerResponse>)>();
+            var tasks = hostnames.Select(async hostname =>
+            {
+                UriBuilder infoUrlBuilder = GetHostnameUrl(Request.Scheme, hostname, urlPath);
+                var actualServerUrl = $"{infoUrlBuilder.Scheme}://{infoUrlBuilder.Host}:{infoUrlBuilder.Port}";
+                var infoUrl = infoUrlBuilder.ToString();
 
-				using var client = new HttpClient(new HttpClientHandler { UseDefaultCredentials = true })
-				{
+                using var client = new HttpClient(new HttpClientHandler { UseDefaultCredentials = true })
+                {
                     Timeout = _settings.CurrentValue.LogParserTimeout
                 };
 
-				string responseContent;
+                string responseContent;
                 TServerResponse serverResponse;
-				NodeResponse<TServerResponse> responseWrapper;
+                NodeResponse<TServerResponse> responseWrapper;
 
-				try
-				{
-					var response = await client.GetAsync(infoUrl);
-					var type = typeof(IEnumerable<>).MakeGenericType(new[] { _settings.CurrentValue.MetricsType });
+                try
+                {
+                    var response = await client.GetAsync(infoUrl);
+                    var type = typeof(IEnumerable<>).MakeGenericType(new[] { _settings.CurrentValue.MetricsType });
 
                     responseContent = await response.Content.ReadAsStringAsync();
-					if (!response.StatusCode.IsSuccessCode())
-					{
+                    if (!response.StatusCode.IsSuccessCode())
+                    {
                         responseWrapper = new NodeResponse<TServerResponse>
                         {
                             StatusCode = response.StatusCode,
@@ -939,11 +933,11 @@ namespace Ogle
                         };
                     }
                     else if (response.Content.Headers.ContentType?.MediaType == "application/json")
-					{
-						var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    {
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-						options.Converters.Add(new JsonTimeSpanConverter());
-						serverResponse = (TServerResponse)JsonSerializer.Deserialize(responseContent, type, options);
+                        options.Converters.Add(new JsonTimeSpanConverter());
+                        serverResponse = (TServerResponse)JsonSerializer.Deserialize(responseContent, type, options);
                         responseWrapper = new NodeResponse<TServerResponse>
                         {
                             StatusCode = response.StatusCode,
@@ -956,8 +950,8 @@ namespace Ogle
                         throw new InvalidDataException($"Unexpected response type {mime}");
                     }
                 }
-				catch(Exception ex)
-				{
+                catch (Exception ex)
+                {
                     var hre = ex as HttpRequestException;
 
                     responseWrapper = new NodeResponse<TServerResponse>
@@ -966,21 +960,21 @@ namespace Ogle
                     };
                     _logger.LogError(ex, "Error {statusCode} returned from {actualServerUrl}{urlPath}\n{exceptionType}: {exceptionMessage}",
                                      hre?.StatusCode?.ToString() ?? string.Empty,
-									 actualServerUrl,
+                                     actualServerUrl,
                                      urlPath,
-									 ex.GetType(),
-									 ex.Message);
-				}
+                                     ex.GetType(),
+                                     ex.Message);
+                }
 
-				result.Add((actualServerUrl, responseWrapper));
-			});
+                result.Add((actualServerUrl, responseWrapper));
+            });
 
-			await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks);
 
-			return result.ToDictionary(k => k.Item1, v => v.Item2);
-		}
+            return result.ToDictionary(k => k.Item1, v => v.Item2);
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }
 

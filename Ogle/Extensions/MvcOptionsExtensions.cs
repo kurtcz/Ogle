@@ -5,8 +5,8 @@ using Ogle.Conventions;
 
 namespace Ogle.Extensions
 {
-	public static class MvcOptionsExtensions
-	{
+    public static class MvcOptionsExtensions
+    {
         private static string OgleControllerName = nameof(OgleController).Replace("Controller", string.Empty);
 
         public static MvcOptions AddOgleAuthorizeAttributes(this MvcOptions options, params AuthorizeAttribute[] authorizeAttributes)

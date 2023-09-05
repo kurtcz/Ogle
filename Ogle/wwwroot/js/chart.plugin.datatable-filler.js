@@ -2,10 +2,10 @@
 
 'use strict';
 
-(function() {
+(function () {
     Chart.plugins.register({
         id: 'datatable-filler',
-        beforeInit: function(chart, options) {
+        beforeInit: function (chart, options) {
             this.element = document.getElementById(options.target);
             this.callback = options.callback;
             this.datasetHeaderRowStyle = options.datasetHeaderRowStyle;

@@ -4,12 +4,12 @@ using System.Text.RegularExpressions;
 namespace Ogle
 {
     [AttributeUsage(AttributeTargets.Property)]
-	public class LogPatternAttribute : Attribute
-	{
-		public string? Filter { get; }
-		public Regex Regex { get; }
-		public string? Format { get; }
-		public int MatchGroup { get; }
+    public class LogPatternAttribute : Attribute
+    {
+        public string? Filter { get; }
+        public Regex Regex { get; }
+        public string? Format { get; }
+        public int MatchGroup { get; }
 
         public LogPatternAttribute(string regex) : this(null, regex, null, 1)
         {
@@ -33,15 +33,15 @@ namespace Ogle
 
         public LogPatternAttribute(string? filter, string regex, string? format) : this(filter, regex, format, 1)
         {
-		}
+        }
 
-		public LogPatternAttribute(string? filter, string regex, string? format, int matchGroup)
-		{
-			Filter = filter;
-			Regex = new Regex(regex);
-			Format = format;
-			MatchGroup = matchGroup;
-		}
-	}
+        public LogPatternAttribute(string? filter, string regex, string? format, int matchGroup)
+        {
+            Filter = filter;
+            Regex = new Regex(regex);
+            Format = format;
+            MatchGroup = matchGroup;
+        }
+    }
 }
 

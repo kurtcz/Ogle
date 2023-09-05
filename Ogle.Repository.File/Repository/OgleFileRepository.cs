@@ -120,10 +120,10 @@ namespace Ogle.Repository.File
                 dict[timeBucket].Add(item);
             }
 
-            foreach(var date in dict.Keys)
+            foreach (var date in dict.Keys)
             {
                 var content = JsonSerializer.Serialize(dict[date]);
-                var filename = string.Format(detailedGroupping? DetailedFileMask : FileMask, date);
+                var filename = string.Format(detailedGroupping ? DetailedFileMask : FileMask, date);
                 var path = Path.Combine(Settings.CurrentValue.Folder, filename);
 
                 await System.IO.File.AppendAllTextAsync(path, content);

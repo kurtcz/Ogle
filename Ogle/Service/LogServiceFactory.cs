@@ -3,10 +3,10 @@ using Microsoft.Extensions.Options;
 
 namespace Ogle
 {
-	internal static class LogServiceFactory
-	{
-		public static dynamic CreateInstance(IOptionsMonitor<OgleOptions> settings, object? repo = null)
-		{
+    internal static class LogServiceFactory
+    {
+        public static dynamic CreateInstance(IOptionsMonitor<OgleOptions> settings, object? repo = null)
+        {
             var logServiceType = typeof(LogService<,,>).MakeGenericType(new[]
             {
                     settings.CurrentValue.GroupKeyType,
@@ -17,8 +17,6 @@ namespace Ogle
 
             return logService;
         }
-
-
     }
 }
 

@@ -40,7 +40,7 @@ namespace Ogle.Repository.Sql.Abstractions
 
         public virtual async Task<IEnumerable<TMetrics>> GetMetrics(DateTime from, DateTime to, bool detailedTable)
         {
-            using(var connection = new TDbConnection())
+            using (var connection = new TDbConnection())
             {
                 connection.ConnectionString = Settings.CurrentValue.ConnectionString;
 
@@ -71,9 +71,9 @@ namespace Ogle.Repository.Sql.Abstractions
         public virtual async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedTable)
         {
             var dt = new DataTable(Settings.CurrentValue.TableName);
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite); 
+            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
-            foreach(var prop in props)
+            foreach (var prop in props)
             {
                 dt.Columns.Add(new DataColumn(prop.Name));
             }
@@ -138,7 +138,7 @@ namespace Ogle.Repository.Sql.Abstractions
             var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
 
             var i = 0;
-            foreach(var prop in props)
+            foreach (var prop in props)
             {
                 if (i > 0)
                 {

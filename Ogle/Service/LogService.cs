@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 
 namespace Ogle
 {
-	internal class LogService<TGroupKey, TRecord, TMetrics> : ILogService<TGroupKey, TRecord, TMetrics>
+    internal class LogService<TGroupKey, TRecord, TMetrics> : ILogService<TGroupKey, TRecord, TMetrics>
         where TGroupKey : class, new()
         where TRecord : TGroupKey, new()
         where TMetrics : TGroupKey, new()
@@ -19,8 +19,8 @@ namespace Ogle
         private readonly ILogMetricsRepository<TMetrics> _repo;
 
         public LogService(IOptionsMonitor<OgleOptions> settings) : this(settings, null)
-		{
-		}
+        {
+        }
 
         public LogService(IOptionsMonitor<OgleOptions> settings, ILogMetricsRepository<TMetrics> repo)
         {
@@ -53,12 +53,12 @@ namespace Ogle
                                                     .Single(j => j is LogPatternAttribute) as LogPatternAttribute);
             var lineNumber = 0;
 
-            foreach(var line in ReadLogs(options.Date.Value))
+            foreach (var line in ReadLogs(options.Date.Value))
             {
                 var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
 
                 lineNumber++;
-                if(!mandatoryMatch.Success)
+                if (!mandatoryMatch.Success)
                 {
                     continue;
                 }
@@ -69,7 +69,7 @@ namespace Ogle
 
                 //some events like application restarts do not have a request id
                 //therefore we need to generate one on the fly to be able to aggregate them
-                if(string.IsNullOrEmpty(id))
+                if (string.IsNullOrEmpty(id))
                 {
                     id = Guid.NewGuid().ToString("D");
                 }
@@ -80,7 +80,7 @@ namespace Ogle
                     keyProp.SetValue(record, id);
                     dict.Add(id, record);
 
-                    foreach(var patternInfo in mandatoryPatterns.Where(i => i.Key.Name != keyProp.Name))
+                    foreach (var patternInfo in mandatoryPatterns.Where(i => i.Key.Name != keyProp.Name))
                     {
                         var value = ParseValue(patternInfo.Key.PropertyType, mandatoryMatch.Groups[patternInfo.Value.MatchGroup].Value, options.Date.Value, patternInfo.Value.Format);
 
@@ -103,7 +103,7 @@ namespace Ogle
 
                 record = dict[id];
 
-                foreach(var patternInfo in patterns)
+                foreach (var patternInfo in patterns)
                 {
                     var oldValue = patternInfo.Key.GetValue(record);
                     object? defaultValue = GetDefaultValueForType(patternInfo.Key.PropertyType);
@@ -115,7 +115,7 @@ namespace Ogle
 
                     //string.Contains() is much faster than Regex.Match()
                     //let's use it to quickly filter out lines we are not interested in
-                    if(patternInfo.Value.Filter != null && !line.Contains(patternInfo.Value.Filter))
+                    if (patternInfo.Value.Filter != null && !line.Contains(patternInfo.Value.Filter))
                     {
                         continue;
                     }
@@ -207,7 +207,7 @@ namespace Ogle
             var backBuffer = new LinkedList<string>();
             var sb = new StringBuilder();
 
-            foreach(var logLine in ReadLogs(date))
+            foreach (var logLine in ReadLogs(date))
             {
                 if (logLine.Contains(searchTerm))
                 {
@@ -223,7 +223,7 @@ namespace Ogle
                         //go back and find all matching lines from our back buffer
                         if (backBuffer.Any() && !previousLineMatched)
                         {
-                            for(var element = backBuffer.Last; element != null; element = element.Previous)
+                            for (var element = backBuffer.Last; element != null; element = element.Previous)
                             {
                                 var backBufferLine = element.Value;
 
@@ -232,7 +232,7 @@ namespace Ogle
                                 if (match.Success)
                                 {
                                     keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
-                                    for(element = backBuffer.First; element != null;)
+                                    for (element = backBuffer.First; element != null;)
                                     {
                                         backBufferLine = element.Value;
                                         if (keys.Any(key => backBufferLine.Contains(key)))
@@ -264,7 +264,7 @@ namespace Ogle
                 }
                 backBuffer.AddLast(logLine);
 
-                if(keys.Any(key => logLine.Contains(key)))
+                if (keys.Any(key => logLine.Contains(key)))
                 {
                     sb.AppendLine(logLine);
                     previousLineMatched = true;
@@ -302,7 +302,7 @@ namespace Ogle
                                               .Single(j => j is LogPatternAttribute) as LogPatternAttribute);
             var sb = new StringBuilder();
 
-            foreach(var line in content.Replace("\r\n", "\n").Split(new[] { '\r', '\n' }))
+            foreach (var line in content.Replace("\r\n", "\n").Split(new[] { '\r', '\n' }))
             {
                 var highlightedLine = line;
                 var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
@@ -351,7 +351,7 @@ namespace Ogle
                 {
                     line = line.Replace(match.Value, $"<span class=\"{@class}\"><span class=\"patternMatchValue\">{match.Value}</span></span>");
                 }
-                else 
+                else
                 {
                     var highlightedMatch = match.Value;
 
@@ -377,11 +377,11 @@ namespace Ogle
 
         public IEnumerable<string> ReadLogs(DateOnly date)
         {
-            foreach(var file in GetLogFilenames(date))
+            foreach (var file in GetLogFilenames(date))
             {
                 var logLines = ReadLinesWithoutLocking(file);
 
-                foreach(var line in logLines)
+                foreach (var line in logLines)
                 {
                     yield return line;
                 }
@@ -392,9 +392,9 @@ namespace Ogle
         {
             using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                using(var sr = new StreamReader(fs))
+                using (var sr = new StreamReader(fs))
                 {
-                    while(!sr.EndOfStream)
+                    while (!sr.EndOfStream)
                     {
                         yield return sr.ReadLine();
                     }
@@ -421,8 +421,8 @@ namespace Ogle
         {
             var props = typeof(TMetrics).GetProperties();
             var timebucketProp = props.Single(i => i.GetCustomAttributes(typeof(TimeBucketAttribute), false).Any());
-            
-            foreach(var item in metrics)
+
+            foreach (var item in metrics)
             {
                 var time = (DateTime)timebucketProp.GetValue(item);
                 var bucket = DateTimeToBucket(time, options);
@@ -565,7 +565,7 @@ namespace Ogle
         public async Task<bool> DeleteLogMetrics(DateOnly date, bool detailedGroupping)
         {
             var from = new DateTime(date.Year, date.Month, date.Day);
-            var to = from.AddDays(1);            
+            var to = from.AddDays(1);
             var b = await _repo.DeleteMetrics(from, to, detailedGroupping);
 
             return b;

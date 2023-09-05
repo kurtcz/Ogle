@@ -4,56 +4,8 @@
     Layout = Model.Layout ?? "_OgleLayout";
     ViewBag.Title = "View Logs";
 }
+<link rel="stylesheet" href="~/_content/Ogle/css/site.css" />
 <style>
-    @@media (prefers-color-scheme: dark) {
-        body {
-            background-color: black;
-            color: white;
-        }
-    }
-
-    #logo {
-        float: right;
-        width: 112px;
-        height: auto;
-        margin-block: -5px;
-        filter: grayscale(100%);
-    }
-
-    #ogleContainer {
-        font-size: smaller;
-    }
-
-    #errorContainer {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        background-color: #ffdddd;
-        color: red;
-        border: 2px solid red;
-        display: none;
-        z-index: 1000;
-        opacity: 0.9;
-    }
-
-    .closeButton {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 21px;
-        height: 21px;
-        font-size: 32px;
-        font-family: Arial, Helvetica, sans-serif;
-        line-height: 0.5;
-        scale: 0.6;
-        cursor: pointer;
-    }
-
-    .errorMessage {
-        margin: 5px 20px 5px 20px;
-    }
-
     #logsContainer {
         margin-top: 10px;
         overflow: hidden;
@@ -100,7 +52,6 @@
 
     .browseFilesContainer {
         max-width: 62%;
-        /*        margin: auto;*/
         display: grid;
         grid-template-columns: 2fr 1fr 1fr;
     }
@@ -160,7 +111,8 @@
             color: firebrick;
         }
 
-        .mandatory.patternMatch > .patternMatchValue {
+        .mandatory.patternMatch > .patternMatchValue,
+        .mandatory.patternMatch .patternMatch > .patternMatchValue {
             color: #4070d0;
         }
     }
@@ -180,7 +132,8 @@
             color: #ff3030;
         }
 
-        .mandatory.patternMatch > .patternMatchValue {
+        .mandatory.patternMatch > .patternMatchValue,
+        .mandatory.patternMatch .patternMatch > .patternMatchValue {
             color: #4080ff;
         }
     }
@@ -191,33 +144,6 @@
 
     select option[value=""] {
         color: gray;
-    }
-
-    @@keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-
-    .animate-bottom {
-        position: relative;
-        animation-name: animebottom;
-        animation-duration: 1s;
-    }
-
-    @@keyframes animatebottom {
-        from {
-            bottom: -100px;
-        }
-
-        to {
-            bottom: 0;
-            opacity: 1
-        }
     }
 </style>
 
@@ -353,7 +279,7 @@
         $('#loader').show();
 
         var requests = [];
-        requests.push(updateDataForServer('/' + routePrefix + '/GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + $('#id').val() + '&highlight={' + @(Model.Highlight.ToString().LowerCaseFirstCharacter()) + '&rand=' + getRandomInt(1000)));
+        requests.push(updateDataForServer('/' + routePrefix + '/GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + $('#id').val() + '&highlight=' + @(Model.Highlight.ToString().LowerCaseFirstCharacter()) + '&rand=' + getRandomInt(1000)));
 
         $.when.apply($, requests).done(function () {
             $('#loader').hide();

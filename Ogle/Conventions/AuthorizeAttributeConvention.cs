@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Ogle.Conventions
 {
-	public class AuthorizeAttributeConvention : IApplicationModelConvention
+    public class AuthorizeAttributeConvention : IApplicationModelConvention
     {
         private readonly string _controllerName;
         private readonly string? _actionName;

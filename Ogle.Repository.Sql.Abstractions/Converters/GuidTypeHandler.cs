@@ -4,8 +4,8 @@ using Dapper;
 
 namespace Ogle.Repository.Sql.Abstractions
 {
-	public class GuidTypeHandler : SqlMapper.TypeHandler<Guid>
-	{
+    public class GuidTypeHandler : SqlMapper.TypeHandler<Guid>
+    {
         public override Guid Parse(object value)
         {
             return Guid.Parse((string)value);

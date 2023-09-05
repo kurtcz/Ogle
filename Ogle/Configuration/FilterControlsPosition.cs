@@ -1,9 +1,9 @@
 ﻿namespace Ogle
 {
-	public enum FilterControlsPosition
-	{
-		Left,
-		Right
-	}
+    public enum FilterControlsPosition
+    {
+        Left,
+        Right
+    }
 }
 

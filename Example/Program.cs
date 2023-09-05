@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Ogle;
-using Ogle.Extensions;
 using Ogle.Repository.Sqlite;
 
 namespace Example

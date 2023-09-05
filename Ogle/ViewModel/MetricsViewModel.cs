@@ -2,8 +2,8 @@
 
 namespace Ogle
 {
-	public class MetricsViewModel
-	{
+    public class MetricsViewModel
+    {
         public string? Layout { get; set; }
         public string? RoutePrefix { get; set; }
         public string[] KeyProperties { get; set; }

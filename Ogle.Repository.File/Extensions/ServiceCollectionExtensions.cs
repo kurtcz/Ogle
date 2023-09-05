@@ -5,8 +5,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Ogle.Repository.File
 {
-	public static class ServiceCollectionExtensions
-	{
+    public static class ServiceCollectionExtensions
+    {
         private static IServiceCollection AddOgleFileRepository<TMetrics>(this IServiceCollection services)
         {
             services.AddTransient<ILogMetricsRepository<TMetrics>, OgleFileRepository<TMetrics>>();

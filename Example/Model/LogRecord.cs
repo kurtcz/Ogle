@@ -3,16 +3,16 @@ using Ogle;
 
 namespace Example.Model
 {
-	public class LogRecord : LogGroupKey
-	{
-		[Mandatory(3, isKey: true)]
-		public string RequestId { get; set; }
+    public class LogRecord : LogGroupKey
+    {
+        [Mandatory(3, isKey: true)]
+        public string RequestId { get; set; }
 
-		[LogPattern("flight", @"(\d+)\ requests\ in\ flight")]
-		public int RequestsInFlight { get; set; }
+        [LogPattern("flight", @"(\d+)\ requests\ in\ flight")]
+        public int RequestsInFlight { get; set; }
 
-		[LogPattern("Found", @"Found\ (\d+)\ \S+\ in\ the\ database")]
-		public int Items { get; set; }
+        [LogPattern("Found", @"Found\ (\d+)\ \S+\ in\ the\ database")]
+        public int Items { get; set; }
 
         [LogPattern("Returning", @"Returning\ (2\d{2}\ \S+)")]
         public bool Succeeded { get; set; }
@@ -27,7 +27,7 @@ namespace Example.Model
         public string Warning { get; set; }
 
         [ErrorLogPattern("ERR", @"\ ([^;]+)$")]
-		public string Error { get; set; }
+        public string Error { get; set; }
     }
 }
 

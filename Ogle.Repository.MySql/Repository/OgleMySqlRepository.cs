@@ -39,7 +39,7 @@ namespace Ogle.Repository.MySql
             return sb.ToString();
         }
 
-    #endregion
+        #endregion
 
         #region Private methods
 

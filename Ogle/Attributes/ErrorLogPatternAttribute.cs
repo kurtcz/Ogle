@@ -1,7 +1,7 @@
 ﻿namespace Ogle
 {
-	public class ErrorLogPatternAttribute : LogPatternAttribute
-	{
+    public class ErrorLogPatternAttribute : LogPatternAttribute
+    {
         public ErrorLogPatternAttribute(string regex) : base(regex)
         {
         }
@@ -28,7 +28,7 @@
 
         public ErrorLogPatternAttribute(string? filter, string regex, string? format, int matchGroup) : base(filter, regex, format, matchGroup)
         {
-		}
-	}
+        }
+    }
 }
 

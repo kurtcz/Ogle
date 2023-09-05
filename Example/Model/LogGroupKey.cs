@@ -9,7 +9,7 @@ namespace Example.Model
     {
         [Mandatory(2)]
         [DisplayName("Server")]
-	    public string ServerName { get; set; }
+        public string ServerName { get; set; }
 
         [LogPattern("User", @"User\ '([^']+)'")]
         [DisplayName("User")]

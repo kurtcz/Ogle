@@ -23,16 +23,16 @@ namespace Ogle.Repository.MsSqlServer
             var dt = new DataTable(Settings.CurrentValue.TableName);
             var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
-            foreach(var prop in props)
+            foreach (var prop in props)
             {
                 dt.Columns.Add(new DataColumn(prop.Name));
             }
 
-            foreach(var row in metrics)
+            foreach (var row in metrics)
             {
                 var values = new List<object>();
 
-                foreach(var prop in props)
+                foreach (var prop in props)
                 {
                     values.Add(prop.GetValue(row));
                 }
@@ -45,11 +45,11 @@ namespace Ogle.Repository.MsSqlServer
             {
                 using (var bulk = new SqlBulkCopy(connection))
                 {
-                    bulk.DestinationTableName = detailedGroupping? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
+                    bulk.DestinationTableName = detailedGroupping ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
                     bulk.NotifyAfter = dt.Rows.Count;
                     bulk.SqlRowsCopied += (s, e) => rowsInserted += e.RowsCopied;
 
-                    foreach(DataColumn column in dt.Columns)
+                    foreach (DataColumn column in dt.Columns)
                     {
                         bulk.ColumnMappings.Add(column.ColumnName, column.ColumnName);
                     }

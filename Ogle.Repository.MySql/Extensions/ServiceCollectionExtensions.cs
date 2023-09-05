@@ -5,8 +5,8 @@ using Ogle.Repository.Sql.Abstractions;
 
 namespace Ogle.Repository.MySql
 {
-	public static class ServiceCollectionExtensions
-	{
+    public static class ServiceCollectionExtensions
+    {
         private static IServiceCollection AddOgleMySqlRepository<TMetrics>(this IServiceCollection services)
         {
             services.AddTransient<ILogMetricsRepository<TMetrics>, OgleMySqlRepository<TMetrics>>();

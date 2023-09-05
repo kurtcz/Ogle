@@ -5,19 +5,19 @@ using Ogle.Repository.Sql.Abstractions;
 
 namespace Ogle.Repository.Sqlite
 {
-	public static class ServiceCollectionExtensions
-	{
-		private static IServiceCollection AddOgleSqliteRepository<TMetrics>(this IServiceCollection services)
-		{
-			services.AddTransient<ILogMetricsRepository<TMetrics>, OgleSqliteRepository<TMetrics>>();
+    public static class ServiceCollectionExtensions
+    {
+        private static IServiceCollection AddOgleSqliteRepository<TMetrics>(this IServiceCollection services)
+        {
+            services.AddTransient<ILogMetricsRepository<TMetrics>, OgleSqliteRepository<TMetrics>>();
 
-			return services;
-		}
+            return services;
+        }
 
         public static IServiceCollection AddOgleSqliteRepository<TMetrics>(this IServiceCollection services, IConfiguration configurationSection)
         {
             services.AddOgleSqliteRepository<TMetrics>();
-			services.Configure<OgleSqlRepositoryOptions>(configurationSection);
+            services.Configure<OgleSqlRepositoryOptions>(configurationSection);
 
             return services;
         }
