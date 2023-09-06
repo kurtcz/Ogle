@@ -18,7 +18,6 @@ using System.IO;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using Ogle.Extensions;
-using Microsoft.AspNetCore.Html;
 
 namespace Ogle
 {
@@ -60,7 +59,7 @@ namespace Ogle
                 var model = new LogsViewModel
                 {
                     Layout = _settings.CurrentValue.Layout,
-                    RoutePrefix = GetRoutePrefix(),
+                    RoutePrefix = ControllerContext.GetRoutePrefix(),
                     Id = id,
                     Date = DateOnly.FromDateTime(date.Value),
                     HostName = hostName,
@@ -89,7 +88,7 @@ namespace Ogle
             {
                 if (!string.IsNullOrWhiteSpace(hostname))
                 {
-                    var endpoint = $"/{GetRoutePrefix()}/BrowseLogFiles?date={date}";
+                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/BrowseLogFiles?date={date}";
                     var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
                     if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
@@ -193,7 +192,7 @@ namespace Ogle
                     }
                 }
 
-                return Content(result);
+                return Content(result, "text/html");
             }
             catch (Exception ex)
             {
@@ -223,7 +222,7 @@ namespace Ogle
                 }
                 else
                 {
-                    var endpoint = $"/{GetRoutePrefix()}/GetLogs?date={date.Value.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
+                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetLogs?date={date.Value.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
                     var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
                     if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
@@ -369,7 +368,7 @@ namespace Ogle
                 return View(new MetricsViewModel
                 {
                     Layout = _settings.CurrentValue.Layout,
-                    RoutePrefix = GetRoutePrefix(),
+                    RoutePrefix = ControllerContext.GetRoutePrefix(),
                     ServerUrls = _settings.CurrentValue.Hostnames.Select(i => GetHostnameUrl(Request.Scheme, i).ToString()).ToArray(),
                     Date = options.Date.Value,
                     HourFrom = options.HourFrom,
@@ -452,7 +451,7 @@ namespace Ogle
                     }
                 }
 
-                var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
+                var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetMetrics?date={options.Date.Value.ToString("yyyy-MM-dd")}&hourFrom={options.HourFrom}&minuteFrom={options.MinuteFrom}&minutesPerBucket={options.MinutesPerBucket.Value}&numberOfBuckets={options.NumberOfBuckets.Value}";
                 var responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
                 if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
@@ -498,7 +497,7 @@ namespace Ogle
 
                 //1st save metrics using default groupping
                 var numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets;
-                var endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DefaultMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
+                var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DefaultMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
                 var responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
                 if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
@@ -514,7 +513,7 @@ namespace Ogle
 
                     //2nd save metrics using detailed groupping
                     numberOfBuckets = _settings.CurrentValue.DefaultNumberOfBuckets * _settings.CurrentValue.DrillDownNumberOfBuckets;
-                    endpoint = $"/{GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
+                    endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetMetrics?date={date.Value.ToString("yyyy-MM-dd")}&minutesPerBucket={_settings.CurrentValue.DrillDownMinutesPerBucket}&numberOfBuckets={numberOfBuckets}";
                     responses = await CollateJsonResponsesFromServers<IEnumerable<object>>(endpoint);
 
                     if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
@@ -562,7 +561,7 @@ namespace Ogle
                 OgleRegistration = new Dictionary<string, string>
                 {
                     { "Version", Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "null" },
-                    { "UseOgleRoutePrefix", $"\"{GetRoutePrefix()}\"" },
+                    { "UseOgleRoutePrefix", $"\"{ControllerContext.GetRoutePrefix()}\"" },
                     { "Repository", repoName }
                 },
                 OgleOptions = _settings.CurrentValue.ToPropertyDictionary(),
@@ -813,11 +812,6 @@ namespace Ogle
         private IActionResult FormatErrorResponse(Exception ex, int? statusCode = null)
         {
             return Problem($"{ex.GetType()}: {ex.Message}\n{ex.StackTrace}", statusCode: statusCode, title: ex.Message, type: ex.GetType().ToString());
-        }
-
-        private string GetRoutePrefix()
-        {
-            return ControllerContext.GetRoutePrefix();
         }
 
         private static string[] GenerateTimeBuckets(LogReaderOptions options)

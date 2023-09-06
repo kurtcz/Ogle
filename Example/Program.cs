@@ -40,7 +40,7 @@ namespace Example
                         MaxRequestsInFlight = g.Max(j => j.RequestsInFlight),
                         AvgItems = (int)Math.Round(g.Average(j => j.Items)),
                         MinDuration = g.Min(j => j.Duration),
-                        AvgDuration = TimeSpan.FromTicks((int)Math.Round(g.Average(j => j.Duration.Ticks))),
+                        AvgDuration = TimeSpan.FromTicks((long)Math.Round(g.Average(j => j.Duration.Ticks))),
                         MaxDuration = g.Max(j => j.Duration)
                     };
                 });
