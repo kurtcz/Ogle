@@ -82,13 +82,13 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/BrowseLogFiles")]
-        public async Task<IActionResult> BrowseLogFiles(DateTime? date, string hostname)
+        public async Task<IActionResult> BrowseLogFiles(DateTime? date, string? hostname)
         {
             try
             {
                 if (!string.IsNullOrWhiteSpace(hostname))
                 {
-                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/BrowseLogFiles?date={date}";
+                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/BrowseLogFiles?date={date:yyyy-MM-dd}";
                     var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
                     if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))

@@ -349,7 +349,10 @@ namespace Ogle
 
                 if (match.Groups.Count == 1)
                 {
-                    line = line.Replace(match.Value, $"<span class=\"{@class}\"><span class=\"patternMatchValue\">{match.Value}</span></span>");
+                    if (!string.IsNullOrWhiteSpace(match.Value))
+                    {
+                        line = line.Replace(match.Value, $"<span class=\"{@class}\"><span class=\"patternMatchValue\">{match.Value}</span></span>");
+                    }
                 }
                 else
                 {
@@ -357,7 +360,10 @@ namespace Ogle
 
                     for (var i = 1; i < match.Groups.Count; i++)
                     {
-                        highlightedMatch = highlightedMatch.Replace(match.Groups[i].Value, $"<span class=\"patternMatchValue\">{match.Groups[i].Value}</span>");
+                        if (!string.IsNullOrWhiteSpace(match.Groups[i].Value))
+                        {
+                            highlightedMatch = highlightedMatch.Replace(match.Groups[i].Value, $"<span class=\"patternMatchValue\">{match.Groups[i].Value}</span>");
+                        }
                     }
                     line = line.Replace(match.Value, $"<span class=\"{@class}\">{highlightedMatch}</span>");
                 }
