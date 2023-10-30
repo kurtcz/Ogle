@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Microsoft.Extensions.Options;
 
 namespace Ogle
@@ -226,7 +227,39 @@ namespace Ogle
 
                     if (match.Success)
                     {
-                        keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                        if (!keys.Contains(match.Groups[keyAttribute.MatchGroup].Value))
+                        {
+                            keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+
+                            if (searchTerm != match.Groups[keyAttribute.MatchGroup].Value)
+                            {
+                                //search term found on a line that matches the mandatory pattern but does not match the key
+                                //go back and find all matching lines from our back buffer
+                                if (backBuffer.Any() && !previousLineMatched)
+                                {
+                                    for (var element = backBuffer.First; element != null;)
+                                    {
+                                        var backBufferLine = element.Value;
+
+                                        if (keys.Any(key => backBufferLine.Contains(key)))
+                                        {
+                                            var next = element.Next;
+
+                                            //remove the matching line from our back buffer
+                                            backBuffer.Remove(element);
+                                            element = next;
+
+                                            sb.AppendLine(backBufferLine);
+                                        }
+                                        else
+                                        {
+                                            element = element.Next;
+                                        }
+                                    }
+                                    previousLineMatched = true;
+                                }
+                            }
+                        }
                     }
                     else
                     {
