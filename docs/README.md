@@ -33,6 +33,7 @@ Ogle is suitable for applications written in .NET 6
     "LogFilePattern": "Sample-{0:yyyyMMdd}.log",    //set log file name pattern
     "Layout": "_Layout",    //optionally make Ogle pages use your website's layout cshtml file
     "AllowedSearchPattern": "\\S{5,}",  //regex pattern used for validation of the search term
+    "MaxLogContentLength": 1048576, //limit log search output to 1MB (optional)
     "HttpPort": 8080,   //set application HTTP port (optional, default=80)
     "HttpsPort": 4430,  //set application HTTPS port (optional, default=443)
     "Hostnames": [

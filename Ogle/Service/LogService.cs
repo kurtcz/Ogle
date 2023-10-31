@@ -229,7 +229,10 @@ namespace Ogle
                     {
                         if (!keys.Contains(match.Groups[keyAttribute.MatchGroup].Value))
                         {
-                            keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                            if (!string.IsNullOrEmpty(match.Groups[keyAttribute.MatchGroup].Value))
+                            {
+                                keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                            }
 
                             if (searchTerm != match.Groups[keyAttribute.MatchGroup].Value)
                             {
@@ -275,7 +278,11 @@ namespace Ogle
 
                                 if (match.Success)
                                 {
-                                    keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                                    if (!string.IsNullOrEmpty(match.Groups[keyAttribute.MatchGroup].Value))
+                                    {
+                                        keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                                    }
+
                                     for (element = backBuffer.First; element != null;)
                                     {
                                         backBufferLine = element.Value;
@@ -332,6 +339,12 @@ namespace Ogle
                 }
             }
 
+            if (_settings.CurrentValue.MaxLogContentLength > 0 &&
+                sb.Length > _settings.CurrentValue.MaxLogContentLength)
+            {
+                sb.Length = _settings.CurrentValue.MaxLogContentLength;
+            }
+
             return sb.ToString();
         }
 
@@ -346,7 +359,7 @@ namespace Ogle
                                               .Single(j => j is LogPatternAttribute) as LogPatternAttribute);
             var sb = new StringBuilder();
 
-            foreach (var line in content.Replace("\r\n", "\n").Split(new[] { '\r', '\n' }))
+            foreach (var line in content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 var highlightedLine = line;
                 var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
@@ -420,7 +433,9 @@ namespace Ogle
         {
             var logFiles = Directory.GetFiles(_settings.CurrentValue.LogFolder,
                                               string.Format(_settings.CurrentValue.LogFilePattern, date))
-                                    .OrderBy(path => path);
+                                    .OrderBy(path => Path.GetDirectoryName(path))
+                                    .ThenBy(path => Path.GetFileNameWithoutExtension(path))
+                                    .ThenBy(path => Path.GetExtension(path));
 
             return logFiles;
         }
