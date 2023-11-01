@@ -10,7 +10,7 @@ namespace Ogle
 
         public MandatoryLogPatternAttribute(string regex)
         {
-            Regex = new Regex(regex);
+            Regex = new Regex(regex, RegexOptions.Compiled | RegexOptions.Singleline);
         }
     }
 }

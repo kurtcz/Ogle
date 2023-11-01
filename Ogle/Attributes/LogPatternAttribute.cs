@@ -38,7 +38,7 @@ namespace Ogle
         public LogPatternAttribute(string? filter, string regex, string? format, int matchGroup)
         {
             Filter = filter;
-            Regex = new Regex(regex);
+            Regex = new Regex(regex, RegexOptions.Compiled | RegexOptions.Singleline);
             Format = format;
             MatchGroup = matchGroup;
         }
