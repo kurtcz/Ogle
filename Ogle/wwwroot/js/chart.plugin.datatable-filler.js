@@ -110,7 +110,7 @@
 
                     if (aggregateOperation) {
                         if (aggregateOperation == 'avg') {
-                            rowstyle = parseInt(rowTotal);
+                            rowTotal = parseInt(rowTotal);
                         }
                         if (this.callback) {
                             rowTotal = this.callback(rowTotal);

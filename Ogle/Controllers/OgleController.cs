@@ -595,6 +595,10 @@ namespace Ogle
             {
                 result.Add($"{_settings.CurrentValue.MetricsType.FullName} must be a subclass of {_settings.CurrentValue.GroupKeyType.FullName}");
             }
+            if (_settings.CurrentValue.LogReaderBackBufferCapacity <= 0)
+            {
+                result.Add($"LogReaderBackBufferCapacity must greater than zero");
+            }
 
             var keyProps = _settings.CurrentValue.GroupKeyType.GetProperties()
                                     .Select(i => i.Name)
