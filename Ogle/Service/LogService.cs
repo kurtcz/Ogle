@@ -53,11 +53,11 @@ namespace Ogle
                                               v => v.GetCustomAttributes(true)
                                                     .Single(j => j is LogPatternAttribute) as LogPatternAttribute);
             var lineNumber = 0;
-            string? prevLineId = null;            
+            string? generatedId = null;            
 
             foreach (var line in ReadLogs(options.Date.Value))
             {
-                var idFound = true;
+                var recordCreated = false;
                 var patternFound = false;
                 var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
 
@@ -75,8 +75,12 @@ namespace Ogle
                 //therefore we need to generate one on the fly to be able to aggregate them
                 if (string.IsNullOrEmpty(id))
                 {
-                    idFound = false;
-                    id = prevLineId ?? Guid.NewGuid().ToString("D");
+                    generatedId ??= Guid.NewGuid().ToString("D");
+                    id = generatedId;
+                }
+                else
+                {
+                    generatedId = null;
                 }
 
                 if (!dict.ContainsKey(id))
@@ -84,6 +88,7 @@ namespace Ogle
                     record = new TRecord();
                     keyProp.SetValue(record, id);
                     dict.Add(id, record);
+                    recordCreated = true;
 
                     foreach (var patternInfo in mandatoryPatterns.Where(i => i.Key.Name != keyProp.Name))
                     {
@@ -140,11 +145,10 @@ namespace Ogle
                         patternFound = true;
                     }
                 }
-                if (!idFound && !patternFound)
+                if (generatedId != null && recordCreated && !patternFound)
                 {
-                    dict.Remove(id);
+                    dict.Remove(generatedId);
                 }
-                prevLineId = id;
             }
 
 
