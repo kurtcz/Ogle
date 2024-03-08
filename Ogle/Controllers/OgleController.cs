@@ -18,6 +18,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using Ogle.Extensions;
+using System.Net;
 
 namespace Ogle
 {
@@ -898,8 +899,16 @@ namespace Ogle
                 UriBuilder infoUrlBuilder = GetHostnameUrl(Request.Scheme, hostname, urlPath);
                 var actualServerUrl = $"{infoUrlBuilder.Scheme}://{infoUrlBuilder.Host}:{infoUrlBuilder.Port}";
                 var infoUrl = infoUrlBuilder.ToString();
+                var handler = new HttpClientHandler
+                {
+                    UseDefaultCredentials = true,
+                    Proxy = new WebProxy
+                    {
+                        UseDefaultCredentials = true
+                    }
+                };
 
-                using var client = new HttpClient(new HttpClientHandler { UseDefaultCredentials = true })
+                using var client = new HttpClient(handler)
                 {
                     Timeout = _settings.CurrentValue.LogParserTimeout
                 };
