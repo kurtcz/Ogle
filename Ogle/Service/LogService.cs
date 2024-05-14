@@ -19,6 +19,8 @@ namespace Ogle
         private readonly IOptionsMonitor<OgleOptions> _settings;
         private readonly ILogMetricsRepository<TMetrics> _repo;
 
+        private Dictionary<Type, object> _defaultEnums = new Dictionary<Type, object>();
+
         public LogService(IOptionsMonitor<OgleOptions> settings) : this(settings, null)
         {
         }
@@ -500,7 +502,7 @@ namespace Ogle
             }
         }
 
-        private static object? GetDefaultValueForType(Type type)
+        private object? GetDefaultValueForType(Type type)
         {
             object? defaultValue = null;
 
@@ -555,6 +557,14 @@ namespace Ogle
             else if (type == typeof(string))
             {
                 defaultValue = default(string);
+            }
+            else if (type.IsEnum)
+            {
+                if (!_defaultEnums.ContainsKey(type))
+                {
+                    _defaultEnums.Add(type, Activator.CreateInstance(type));
+                }
+                defaultValue = _defaultEnums[type];
             }
 
             return defaultValue;
@@ -617,6 +627,10 @@ namespace Ogle
             else if (type == typeof(string))
             {
                 value = stringValue;
+            }
+            else if (type.IsEnum)
+            {
+                value = Enum.Parse(type, stringValue);
             }
 
             return value;
