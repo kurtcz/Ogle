@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -54,6 +55,11 @@ namespace Ogle
                                 .ToDictionary(k => k,
                                               v => v.GetCustomAttributes(true)
                                                     .Single(j => j is LogPatternAttribute) as LogPatternAttribute);
+            var maxLengths = props.Where(i => i.GetCustomAttributes(true)
+                                             .Any(j => j is MaxLengthAttribute))
+                                  .ToDictionary(k => k,
+                                                v => v.GetCustomAttributes(true)
+                                                      .Single(j => j is MaxLengthAttribute) as MaxLengthAttribute);
             var lineNumber = 0;
             string? generatedId = null;            
 
@@ -139,10 +145,18 @@ namespace Ogle
                         continue;
                     }
 
+                    var maxLength = maxLengths.ContainsKey(patternInfo.Key) ? maxLengths[patternInfo.Key].Length : -1;
                     object? value = ParseValue(patternInfo.Key.PropertyType, match.Groups[patternInfo.Value.MatchGroup].Value, options.Date.Value, patternInfo.Value.Format);
 
                     if (oldValue != value)
                     {
+                        if (maxLength >= 0)
+                        {
+                            if (value?.GetType() == typeof(string))
+                            {
+                                value = (value as string).Truncate(maxLength);
+                            }
+                        }
                         patternInfo.Key.SetValue(record, value);
                         patternFound = true;
                     }

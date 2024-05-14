@@ -9,7 +9,8 @@
 
         public static string? Truncate(this string? str, int maxLength)
         {
-            if (str?.Length > maxLength)
+            if (str != null &&
+                str.Length > maxLength)
             {
                 return str.Substring(0, maxLength);
             }
