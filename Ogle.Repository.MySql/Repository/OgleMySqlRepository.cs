@@ -3,13 +3,16 @@ using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using Ogle.Repository.Sql.Abstractions;
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace Ogle.Repository.MySql
 {
     public class OgleMySqlRepository<TMetrics> : OgleSqlRepository<MySqlConnection, TMetrics>
+        where TMetrics : new()
     {
         static OgleMySqlRepository()
         {
@@ -26,11 +29,10 @@ namespace Ogle.Repository.MySql
         {
             var tableName = detailedTable ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
             var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {tableName} (_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
-            foreach (var prop in props)
+            foreach (var prop in PropertyInfos)
             {
-                var dbType = GetDbType(prop.PropertyType);
+                var dbType = GetDbType(prop);
 
                 sb.Append($", {prop.Name} {dbType}");
             }
@@ -43,8 +45,10 @@ namespace Ogle.Repository.MySql
 
         #region Private methods
 
-        private static string GetDbType(Type type)
+        private static string GetDbType(PropertyInfo propertyInfo)
         {
+            Type type = propertyInfo.PropertyType;
+            int maxLength = propertyInfo.GetCustomAttribute<MaxLengthAttribute>()?.Length ?? -1;
             string dbType;
 
             if (type == typeof(bool) ||
@@ -99,13 +103,20 @@ namespace Ogle.Repository.MySql
                 dbType = "TIME";
             }
             else if (type == typeof(Guid) ||
-                        type == typeof(Guid?))
+                     type == typeof(Guid?))
             {
                 dbType = "CHAR(36)";
             }
             else if (type == typeof(string))
             {
-                dbType = "VARCHAR(65535)";
+                if (maxLength >= 0 && maxLength <= 65535)
+                {
+                    dbType = $"VARCHAR({maxLength})";
+                }
+                else
+                {
+                    dbType = "VARCHAR(65535)";
+                }
             }
             else
             {

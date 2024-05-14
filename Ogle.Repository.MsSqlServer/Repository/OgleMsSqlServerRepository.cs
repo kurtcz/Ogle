@@ -2,15 +2,18 @@
 using Ogle.Repository.Sql.Abstractions;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Ogle.Repository.MsSqlServer
 {
     public class OgleMsSqlServerRepository<TMetrics> : OgleSqlRepository<SqlConnection, TMetrics>
+        where TMetrics : new()
     {
         public OgleMsSqlServerRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings) : base(settings)
         {
@@ -18,12 +21,11 @@ namespace Ogle.Repository.MsSqlServer
 
         #region Overriden methods
 
-        public async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedGroupping)
+        public override async Task<long> SaveMetrics(IEnumerable<TMetrics> metrics, bool detailedGroupping)
         {
             var dt = new DataTable(Settings.CurrentValue.TableName);
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
-            foreach (var prop in props)
+            foreach (var prop in PropertyInfos)
             {
                 dt.Columns.Add(new DataColumn(prop.Name));
             }
@@ -32,9 +34,9 @@ namespace Ogle.Repository.MsSqlServer
             {
                 var values = new List<object>();
 
-                foreach (var prop in props)
+                foreach (var prop in PropertyInfos)
                 {
-                    values.Add(prop.GetValue(row));
+                    values.Add(PropertySanitizers[prop]?.Invoke(row));
                 }
                 dt.Rows.Add(values.ToArray());
             }
@@ -66,11 +68,10 @@ namespace Ogle.Repository.MsSqlServer
         {
             var tableName = detailedTable ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
             var sb = new StringBuilder($"IF OBJECT_ID(N'{tableName}') IS NULL CREATE TABLE {tableName} (_id INT IDENTITY PRIMARY KEY");
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
-            foreach (var prop in props)
+            foreach (var prop in PropertyInfos)
             {
-                var dbType = GetDbType(prop.PropertyType);
+                var dbType = GetDbType(prop);
 
                 sb.Append($", {prop.Name} {dbType}");
             }
@@ -83,8 +84,10 @@ namespace Ogle.Repository.MsSqlServer
 
         #region Private methods
 
-        private static string GetDbType(Type type)
+        private static string GetDbType(PropertyInfo propertyInfo)
         {
+            Type type = propertyInfo.PropertyType;
+            int maxLength = propertyInfo.GetCustomAttribute<MaxLengthAttribute>()?.Length ?? -1;
             string dbType;
 
             if (type == typeof(bool) ||
@@ -145,7 +148,14 @@ namespace Ogle.Repository.MsSqlServer
             }
             else if (type == typeof(string))
             {
-                dbType = "VARCHAR(MAX)";
+                if (maxLength >= 0)
+                {
+                    dbType = $"VARCHAR({maxLength})";
+                }
+                else
+                {
+                    dbType = "VARCHAR(MAX)";
+                }
             }
             else
             {

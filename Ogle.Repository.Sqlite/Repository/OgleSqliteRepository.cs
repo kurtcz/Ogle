@@ -10,6 +10,7 @@ using System.Text;
 namespace Ogle.Repository.Sqlite
 {
     public class OgleSqliteRepository<TMetrics> : OgleSqlRepository<SQLiteConnection, TMetrics>
+        where TMetrics : new()
     {
         static OgleSqliteRepository()
         {
@@ -27,9 +28,8 @@ namespace Ogle.Repository.Sqlite
         {
             var tableName = detailedTable ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
             var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {tableName} (_id INTEGER PRIMARY KEY");
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
-            foreach (var prop in props)
+            foreach (var prop in PropertyInfos)
             {
                 var dbType = GetDbType(prop.PropertyType);
 

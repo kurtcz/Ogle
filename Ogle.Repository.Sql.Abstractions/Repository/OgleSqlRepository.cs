@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Ogle.Extensions;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Linq;
 using System.Reflection;
@@ -13,12 +14,18 @@ namespace Ogle.Repository.Sql.Abstractions
 {
     public abstract class OgleSqlRepository<TDbConnection, TMetrics> : ILogMetricsRepository<TMetrics>
         where TDbConnection : IDbConnection, new()
+        where TMetrics : new()
     {
         protected IOptionsMonitor<OgleSqlRepositoryOptions> Settings { get; }
+
+        protected readonly PropertyInfo[] PropertyInfos = typeof(TMetrics).GetProperties().Where(i => i.CanWrite).ToArray();
+        protected readonly Dictionary<PropertyInfo, Func<object, object>> PropertySanitizers = new Dictionary<PropertyInfo, Func<object, object>>();
+        protected bool SanitizationNeeded { get; private set; }
 
         public OgleSqlRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings)
         {
             Settings = settings;
+            SetupPropertySanitizers();
         }
 
         #region ILogMetricsRepository methods
@@ -90,7 +97,23 @@ namespace Ogle.Repository.Sql.Abstractions
 
                 foreach (var row in metrics)
                 {
-                    await connection.ExecuteAsync(sql, row);
+                    TMetrics sanitizedRow;
+
+                    if (SanitizationNeeded)
+                    {
+                        sanitizedRow = new TMetrics();
+                        foreach (var prop in PropertyInfos)
+                        {
+                            var value = prop.GetValue(row);
+
+                            prop.SetValue(sanitizedRow, PropertySanitizers[prop].Invoke(value));
+                        }
+                    }
+                    else
+                    {
+                        sanitizedRow = row;
+                    }
+                    await connection.ExecuteAsync(sql, sanitizedRow);
                     rowsInserted++;
                 }
             }
@@ -130,6 +153,27 @@ namespace Ogle.Repository.Sql.Abstractions
 
         #region Private methods
 
+        private void SetupPropertySanitizers()
+        {
+            foreach(var prop in PropertyInfos)
+            {
+                Func<object, object> sanitizerFunc = value => value;
+
+                if (prop.PropertyType == typeof(string))
+                {
+                    var maxLength = prop.GetCustomAttribute<MaxLengthAttribute>()?.Length ?? -1;
+
+                    if (maxLength >= 0)
+                    {
+                        sanitizerFunc = value => (value as string)?.Truncate(maxLength);
+                        SanitizationNeeded = true;
+                    }
+                }
+
+                PropertySanitizers.Add(prop, sanitizerFunc);
+            }
+        }
+
         private string BuildSelectCommand(bool detailedGroupping)
         {
             var tableName = detailedGroupping ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
@@ -156,11 +200,10 @@ namespace Ogle.Repository.Sql.Abstractions
         {
             var tableName = detailedGroupping ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
             var sql = new StringBuilder($"INSERT INTO {tableName} (");
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite).ToArray();
-            var timeBucketProp = props.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
+            var timeBucketProp = PropertyInfos.Single(i => i.GetCustomAttribute(typeof(TimeBucketAttribute)) != null);
 
             var i = 0;
-            foreach (var prop in props)
+            foreach (var prop in PropertyInfos)
             {
                 if (i > 0)
                 {
@@ -172,7 +215,7 @@ namespace Ogle.Repository.Sql.Abstractions
             sql.Append(") VALUES (");
 
             i = 0;
-            foreach (var prop in props)
+            foreach (var prop in PropertyInfos)
             {
                 if (i > 0)
                 {

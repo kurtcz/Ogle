@@ -8,6 +8,7 @@ namespace Ogle.Repository.MsSqlServer
     public static class ServiceCollectionExtensions
     {
         private static IServiceCollection AddOgleMsSqlServerRepository<TMetrics>(this IServiceCollection services)
+            where TMetrics : new()
         {
             services.AddTransient<ILogMetricsRepository<TMetrics>, OgleMsSqlServerRepository<TMetrics>>();
 
@@ -15,6 +16,7 @@ namespace Ogle.Repository.MsSqlServer
         }
 
         public static IServiceCollection AddOgleMsSqlServerRepository<TMetrics>(this IServiceCollection services, IConfiguration configurationSection)
+            where TMetrics : new()
         {
             services.AddOgleMsSqlServerRepository<TMetrics>();
             services.Configure<OgleSqlRepositoryOptions>(configurationSection);
@@ -23,6 +25,7 @@ namespace Ogle.Repository.MsSqlServer
         }
 
         public static IServiceCollection AddOgleMsSqlServerRepository<TMetrics>(this IServiceCollection services, Action<OgleSqlRepositoryOptions> configurationAction)
+            where TMetrics : new()
         {
             services.AddOgleMsSqlServerRepository<TMetrics>();
             services.Configure<OgleSqlRepositoryOptions>(configurationAction);

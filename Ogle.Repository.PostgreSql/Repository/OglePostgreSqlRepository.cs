@@ -2,13 +2,16 @@
 using Npgsql;
 using Ogle.Repository.Sql.Abstractions;
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace Ogle.Repository.PostgreSql
 {
     public class OglePostgreSqlRepository<TMetrics> : OgleSqlRepository<NpgsqlConnection, TMetrics>
+        where TMetrics : new()
     {
         public OglePostgreSqlRepository(IOptionsMonitor<OgleSqlRepositoryOptions> settings) : base(settings)
         {
@@ -20,11 +23,10 @@ namespace Ogle.Repository.PostgreSql
         {
             var tableName = detailedTable ? Settings.CurrentValue.DetailedTableName : Settings.CurrentValue.TableName;
             var sb = new StringBuilder($"CREATE TABLE IF NOT EXISTS {tableName} (_id SERIAL PRIMARY KEY");
-            var props = typeof(TMetrics).GetProperties().Where(i => i.CanWrite);
 
-            foreach (var prop in props)
+            foreach (var prop in PropertyInfos)
             {
-                var dbType = GetDbType(prop.PropertyType);
+                var dbType = GetDbType(prop);
 
                 sb.Append($", {prop.Name} {dbType}");
             }
@@ -37,8 +39,10 @@ namespace Ogle.Repository.PostgreSql
 
         #region Private methods
 
-        private static string GetDbType(Type type)
+        private static string GetDbType(PropertyInfo propertyInfo)
         {
+            Type type = propertyInfo.PropertyType;
+            int maxLength = propertyInfo.GetCustomAttribute<MaxLengthAttribute>()?.Length ?? -1;
             string dbType;
 
             if (type == typeof(bool) ||
@@ -99,7 +103,14 @@ namespace Ogle.Repository.PostgreSql
             }
             else if (type == typeof(string))
             {
-                dbType = "TEXT";
+                if (maxLength >= 0)
+                {
+                    dbType = $"VARCHAR({maxLength})";
+                }
+                else
+                {
+                    dbType = "TEXT";
+                }
             }
             else
             {
