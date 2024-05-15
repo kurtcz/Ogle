@@ -36,7 +36,9 @@ namespace Ogle.Repository.MsSqlServer
 
                 foreach (var prop in PropertyInfos)
                 {
-                    values.Add(PropertySanitizers[prop]?.Invoke(row));
+                    var value = prop.GetValue(row);
+
+                    values.Add(PropertySanitizers[prop]?.Invoke(value));
                 }
                 dt.Rows.Add(values.ToArray());
             }
