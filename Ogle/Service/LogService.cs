@@ -302,6 +302,12 @@ namespace Ogle
                                     {
                                         keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
                                     }
+                                    else
+                                    {
+                                        sb.AppendLine(backBufferLine);
+                                        previousLineMatched = true;
+                                        break;
+                                    }
 
                                     for (element = backBuffer.First; element != null;)
                                     {
