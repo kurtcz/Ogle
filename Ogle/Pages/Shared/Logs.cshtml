@@ -270,7 +270,7 @@
             $('#msg').show();
             return;
         }
-        else if ($('#date').val() == '') {
+        else if ($('#date').val() == '' && @(Model.UseLogIndexing ? "false" : "true")) {
             $('#msg').html('No date specified');
             $('#msg').show();
             return;

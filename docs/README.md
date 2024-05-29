@@ -31,6 +31,7 @@ Ogle is suitable for applications written in .NET 6
 "Ogle": {
     "LogFolder": "logs",    //set path to the log folder
     "LogFilePattern": "Sample-{0:yyyyMMdd}.log",    //set log file name pattern
+    "LogIndexFolder": "logs/index", //set path to the full-text index folder (optional)
     "Layout": "_Layout",    //optionally make Ogle pages use your website's layout cshtml file
     "AllowedSearchPattern": "\\S{5,}",  //regex pattern used for validation of the search term
     "MaxLogContentLength": 1048576, //limit log search output to 1MB (optional)
@@ -96,6 +97,14 @@ builder.Services.AddControllers(options =>
 - To view log metrics navigate to `/ogle/metrics`
 
 Call to fetch metrics for a given day will be distributed to all web application nodes, which will parse the logs and return the metrics which will then be displayed on the chart and in the table below.
+
+- If you opt in to using full-text log search then you need to create the indices at the end of every day. To do so call
+
+`/ogle/CreateIndexOnAllServers?date=yyyy-MM-dd&overwriteExisting=true`
+
+Ogle will create a full-text index for each day. To delete an index call
+
+`/ogle/DeleteIndexOnAllServers?date=yyyy-MM-dd`
 
 ## Ogle Repository
 Parsing request metrics from the logs is a time consuming task - to shorten metrics response times register one of Ogle Repository NuGet packages. 

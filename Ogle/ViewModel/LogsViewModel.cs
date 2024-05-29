@@ -13,6 +13,7 @@ namespace Ogle
         public DateOnly? Date { get; set; }
         public bool Highlight { get; set; }
         public List<SelectListItem> ServerSelectList { get; set; }
+        public bool UseLogIndexing { get; set; }
     }
 }
 

@@ -55,21 +55,25 @@ namespace Ogle
                         ErrorMessages = errorMessages.ToArray()
                     });
                 }
-                date ??= DateTime.Today.AddDays(-1);
+                if (string.IsNullOrEmpty(id))
+                {
+                    date ??= DateTime.Today.AddDays(-1);
+                }
 
                 var model = new LogsViewModel
                 {
                     Layout = _settings.CurrentValue.Layout,
                     RoutePrefix = ControllerContext.GetRoutePrefix(),
                     Id = id,
-                    Date = DateOnly.FromDateTime(date.Value),
+                    Date = date.HasValue ? DateOnly.FromDateTime(date.Value) : null,
                     HostName = hostName,
                     Highlight = highlight,
                     ServerSelectList = _settings.CurrentValue.Hostnames.Select(i => new SelectListItem
                     {
                         Text = i,
                         Value = GetHostnameUrl(Request.Scheme, i).ToString()
-                    }).ToList()
+                    }).ToList(),
+                    UseLogIndexing = !string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder)
                 };
 
                 return View("Logs", model);
@@ -164,7 +168,10 @@ namespace Ogle
         {
             try
             {
-                date ??= DateTime.Today.AddDays(-1);
+                if (string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
+                {
+                    date ??= DateTime.Today.AddDays(-1);
+                }
 
                 var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
                 string result;
@@ -181,7 +188,7 @@ namespace Ogle
                 {
                     dynamic logService = LogServiceFactory.CreateInstance(_settings);
 
-                    result = await (Task<string>)logService.GetLogContent(id, DateOnly.FromDateTime(date.Value));
+                    result = await (Task<string>)logService.GetLogContent(id, date.HasValue ? DateOnly.FromDateTime(date.Value) : (DateOnly?)null);
 
                     if (string.IsNullOrEmpty(result))
                     {
@@ -208,7 +215,10 @@ namespace Ogle
         {
             try
             {
-                date ??= DateTime.Today.AddDays(-1);
+                if (string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
+                {
+                    date ??= DateTime.Today.AddDays(-1);
+                }
 
                 var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
                 string result;
@@ -223,7 +233,7 @@ namespace Ogle
                 }
                 else
                 {
-                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetLogs?date={date.Value.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
+                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetLogs?date={date?.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
                     var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
                     if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
@@ -232,7 +242,12 @@ namespace Ogle
 
                         if (string.IsNullOrWhiteSpace(result))
                         {
-                            result = $"Search failed for {date:yyyy-MM-dd}";
+                            result = "Search failed";
+
+                            if (date.HasValue)
+                            {
+                                result += $" for {date:yyyy-MM-dd}";
+                            }
                         }
 
                         //unexpected error uses a text/plain mime type and a 500 status code
@@ -244,7 +259,12 @@ namespace Ogle
                                                             .Select(i => i.Value.Payload));
                         if (string.IsNullOrWhiteSpace(result))
                         {
-                            result = $"Request id or search term not found in logs for {date:yyyy-MM-dd}";
+                            result = "Request id or search term not found in logs";
+
+                            if (date.HasValue)
+                            {
+                                result += $" for {date:yyyy-MM-dd}";
+                            }
                         }
                         else
                         {
@@ -543,6 +563,103 @@ namespace Ogle
 
                         return Ok(new[] { rowsSaved, detailedRowsSaved });
                     }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+                throw;
+            }
+        }
+
+        [HttpGet]
+        [Route("/ogle/CreateIndex")]
+        public async Task<IActionResult> CreateIndex(DateTime? date, bool overwriteExisting = false)
+        {
+            try
+            {
+                date ??= DateTime.Today.AddDays(-1);
+
+                var dateOnly = DateOnly.FromDateTime(date.Value);
+                dynamic logService = LogServiceFactory.CreateInstance(_settings);
+
+                logService.CreateIndex(dateOnly, overwriteExisting);
+
+                return Ok("Created");
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+                throw;
+            }
+        }
+
+        [HttpGet]
+        [Route("/ogle/CreateIndexOnAllServers")]
+        public async Task<IActionResult> CreateIndexOnAllServers(DateTime? date, bool overwriteExisting = false)
+        {
+            try
+            {
+                date ??= DateTime.Today.AddDays(-1);
+
+                var dateOnly = DateOnly.FromDateTime(date.Value);
+                var endpoint = $"/{ControllerContext.GetRoutePrefix()}/CreateIndex?date={date.Value.ToString("yyyy-MM-dd")}&overwriteExisting={overwriteExisting}";
+                var responses = await CollateJsonResponsesFromServers<string>(endpoint);
+
+                if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
+                {
+                    return Problem(string.Join("\n", responses.Values.Select(i => i.Error)));
+                }
+                else
+                {
+                    return Ok("Created");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+                throw;
+            }
+        }
+
+
+        [HttpGet]
+        [Route("/ogle/DeleteIndex")]
+        public async Task<IActionResult> DeleteIndex(DateTime date)
+        {
+            try
+            {
+                var dateOnly = DateOnly.FromDateTime(date);
+                dynamic logService = LogServiceFactory.CreateInstance(_settings);
+
+                logService.DeleteIndex(dateOnly);
+
+                return Ok("Deleted");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+                throw;
+            }
+        }
+
+        [HttpGet]
+        [Route("/ogle/DeleteIndexOnAllServers")]
+        public async Task<IActionResult> DeleteIndexOnAllServers(DateTime date)
+        {
+            try
+            {
+                var dateOnly = DateOnly.FromDateTime(date);
+                var endpoint = $"/{ControllerContext.GetRoutePrefix()}/DeleteIndex?date={date.ToString("yyyy-MM-dd")}";
+                var responses = await CollateJsonResponsesFromServers<string>(endpoint);
+
+                if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
+                {
+                    return Problem(string.Join("\n", responses.Values.Select(i => i.Error)));
+                }
+                else
+                {
+                    return Ok("Deleted");
                 }
             }
             catch (Exception ex)

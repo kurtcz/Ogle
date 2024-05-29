@@ -8,7 +8,17 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Lucene.Net.Analysis;
+using Lucene.Net.Analysis.Core;
+using Lucene.Net.Documents;
+using Lucene.Net.Index;
+using Lucene.Net.QueryParsers.Classic;
+using Lucene.Net.Search;
+using Lucene.Net.Store;
+using Lucene.Net.Util;
 using Microsoft.Extensions.Options;
+
+using Directory = System.IO.Directory;
 
 namespace Ogle
 {
@@ -17,10 +27,12 @@ namespace Ogle
         where TRecord : TGroupKey, new()
         where TMetrics : TGroupKey, new()
     {
+        private const LuceneVersion _luceneVersion = LuceneVersion.LUCENE_48;
         private readonly IOptionsMonitor<OgleOptions> _settings;
         private readonly ILogMetricsRepository<TMetrics> _repo;
 
         private Dictionary<Type, object> _defaultEnums = new Dictionary<Type, object>();
+        private Analyzer GetAnalyzer() => new StopAnalyzer(_luceneVersion);
 
         public LogService(IOptionsMonitor<OgleOptions> settings) : this(settings, null)
         {
@@ -218,7 +230,7 @@ namespace Ogle
             return rowsSaved;
         }
 
-        public async Task<string> GetLogContent(string searchTerm, DateOnly date)
+        public async Task<string> GetLogContent(string searchTerm, DateOnly? date)
         {
             var props = typeof(TRecord).GetProperties();
             var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
@@ -239,7 +251,23 @@ namespace Ogle
             var backBuffer = new LinkedList<string>();
             var sb = new StringBuilder();
 
-            foreach (var logLine in ReadLogs(date))
+            if(!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
+            {
+                var indexSearchResult = IndexSearchLogContent(searchTerm, date);
+
+                if (!string.IsNullOrEmpty(indexSearchResult))
+                {
+                    sb.Append(indexSearchResult);
+
+                    return sb.ToString();
+                }
+            }
+            else if (!date.HasValue)
+            {
+                throw new ArgumentNullException(nameof(date));
+            }
+
+            foreach (var logLine in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today)))
             {
                 if (logLine.Contains(searchTerm))
                 {
@@ -372,6 +400,115 @@ namespace Ogle
             }
 
             return sb.ToString();
+        }
+
+        public bool HasIndex(DateOnly date)
+        {
+            var indexPath = DateToIndexPath(date);
+
+            return Directory.Exists(indexPath);
+        }
+
+        public void DeleteIndex(DateOnly date)
+        {
+            if (!HasIndex(date))
+            {
+                return;
+            }
+
+            var indexPath = DateToIndexPath(date);
+
+            foreach(var file in Directory.EnumerateFiles(indexPath))
+            {
+                File.Delete(file);
+            }
+            Directory.Delete(indexPath);
+        }
+
+        public IndexReader CreateIndex(DateOnly date, bool overWriteExisting)
+        {
+            var indexPath = DateToIndexPath(date);
+
+            if (string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
+            {
+                throw new InvalidOperationException("Log index folder not specified");
+            }
+            if (HasIndex(date))
+            {
+                if (overWriteExisting)
+                {
+                    DeleteIndex(date);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Index already exists");
+                }
+            }
+            if (!Directory.Exists(_settings.CurrentValue.LogIndexFolder))
+            {
+                Directory.CreateDirectory(_settings.CurrentValue.LogIndexFolder);
+            }
+
+            var grouppedLogLines = GetLogContentPerKey(date).Values;
+            var analyzer = GetAnalyzer();
+            var indexConfig = new IndexWriterConfig(_luceneVersion, analyzer)
+            {
+                OpenMode = OpenMode.CREATE
+            };
+
+            using(var writer = new IndexWriter(FSDirectory.Open(indexPath), indexConfig))
+            {
+                foreach(var item in grouppedLogLines)
+                {
+                    var doc = new Document
+                    {
+                        new TextField("_raw", item, Field.Store.YES)
+                    };
+                    writer.AddDocument(doc);
+                }
+                writer.Commit();
+                return writer.GetReader(false);
+            }
+        }
+
+        private Dictionary<string, string> GetLogContentPerKey(DateOnly date)
+        {
+            var raw = new Dictionary<string, StringBuilder>();
+            var props = typeof(TRecord).GetProperties();
+            var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
+                                                    .Single(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+            var mandatoryProps = props.Where(i => i.GetCustomAttributes(true).Any(j => j is MandatoryAttribute))
+                                      .ToArray();
+            var mandatoryPatterns = mandatoryProps.ToDictionary(k => k,
+                                                                v => v.GetCustomAttributes(true)
+                                                                      .Single(j => j is MandatoryAttribute) as MandatoryAttribute);
+            var keyAttribute = mandatoryProps.SelectMany(i => i.GetCustomAttributes(true)
+                                                               .Where(j => j is MandatoryAttribute)
+                                                               .Cast<MandatoryAttribute>())
+                                             .Single(i => i.IsKey);
+            string? previousId = null;
+
+            foreach(var line in ReadLogs(date))
+            {
+                var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
+                var id = mandatoryMatch.Success ? mandatoryMatch.Groups[keyAttribute.MatchGroup].Value : previousId;
+
+                //some events like application restarts do not have a request id
+                //therefore we need to generate one on the fly to be able to aggregate them
+                if (string.IsNullOrEmpty(id))
+                {
+                    id = Guid.NewGuid().ToString("D");
+                }
+
+                if (!raw.ContainsKey(id))
+                {
+                    raw.Add(id, new StringBuilder());
+                }
+                raw[id].AppendLine(line);
+                previousId = id;
+            }
+
+            return raw.ToDictionary(k => k.Key, v => v.Value.ToString());
         }
 
         public string HighlightLogContent(string content, string searchTerm)
@@ -673,6 +810,55 @@ namespace Ogle
 
             return b;
         }
+
+        private string DateToIndexPath(DateOnly date)
+        {
+            return Path.Combine(_settings.CurrentValue.LogIndexFolder, date.ToString("yyyyMMdd"));
+        }
+
+        private string? IndexSearchLogContent(string searchTerm, DateOnly? date)
+        {
+            var availableIndices = date.HasValue ? new[] { DateToIndexPath(date.Value) } : Directory.GetDirectories(_settings.CurrentValue.LogIndexFolder);
+            var result = new List<string>();
+
+            foreach(var indexPath in availableIndices)
+            {
+                if (!Directory.Exists(indexPath))
+                {
+                    continue;
+                }
+
+                using (var indexDir = FSDirectory.Open(indexPath))
+                using (var reader = DirectoryReader.Open(indexDir))
+                {
+                    var searcher = new IndexSearcher(reader);
+                    var analyzer = GetAnalyzer();
+                    var parser = new QueryParser(_luceneVersion, "_raw", analyzer);
+                    var query = parser.Parse(searchTerm);
+                    var topDocs = searcher.Search(query, int.MaxValue);
+
+                    result.AddRange(topDocs.ScoreDocs.Select(i => searcher.Doc(i.Doc).Get("_raw")));
+                }
+            }
+
+            return result.Any() ? string.Join("\n", result) : null;
+        }
+
+        //private IEnumerable<string> Tokenize(string text)
+        //{
+        //    var result = new List<string>();
+        //    var analyzer = GetAnalyzer();
+        //    var stream = analyzer.GetTokenStream("_raw", text);
+        //    var attr = stream.GetAttribute<Lucene.Net.Analysis.TokenAttributes.ICharTermAttribute>();
+
+        //    stream.Reset();
+        //    while(stream.IncrementToken())
+        //    {
+        //        result.Add(attr.ToString());
+        //    }
+
+        //    return result;
+        //}
     }
 }
 
