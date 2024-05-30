@@ -10,6 +10,7 @@ namespace Ogle
         public string LogFilePattern { get; set; }
         public string LogIndexFolder { get; set; }
         public string AllowedSearchPattern { get; set; }
+        public int MinFulltextTokenLength { get; set; }
         public int LogReaderBackBufferCapacity { get; set; }
         public int MaxLogContentLength { get; set; }
         public int HttpPort { get; set; }

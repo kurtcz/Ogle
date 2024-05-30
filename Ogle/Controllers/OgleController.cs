@@ -583,7 +583,9 @@ namespace Ogle
                 var dateOnly = DateOnly.FromDateTime(date.Value);
                 dynamic logService = LogServiceFactory.CreateInstance(_settings);
 
-                logService.CreateIndex(dateOnly, overwriteExisting);
+                using (_ = logService.CreateIndex(dateOnly, overwriteExisting))
+                {
+                }
 
                 return Ok("Created");
             }
@@ -625,11 +627,15 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/DeleteIndex")]
-        public async Task<IActionResult> DeleteIndex(DateTime date)
+        public async Task<IActionResult> DeleteIndex(DateTime? date)
         {
             try
             {
-                var dateOnly = DateOnly.FromDateTime(date);
+                if (!date.HasValue)
+                {
+                    return BadRequest("No date specified");
+                }
+                var dateOnly = DateOnly.FromDateTime(date.Value);
                 dynamic logService = LogServiceFactory.CreateInstance(_settings);
 
                 logService.DeleteIndex(dateOnly);
@@ -645,12 +651,16 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/DeleteIndexOnAllServers")]
-        public async Task<IActionResult> DeleteIndexOnAllServers(DateTime date)
+        public async Task<IActionResult> DeleteIndexOnAllServers(DateTime? date)
         {
             try
             {
-                var dateOnly = DateOnly.FromDateTime(date);
-                var endpoint = $"/{ControllerContext.GetRoutePrefix()}/DeleteIndex?date={date.ToString("yyyy-MM-dd")}";
+                if (!date.HasValue)
+                {
+                    return BadRequest("No date specified");
+                }
+                var dateOnly = DateOnly.FromDateTime(date.Value);
+                var endpoint = $"/{ControllerContext.GetRoutePrefix()}/DeleteIndex?date={date.Value.ToString("yyyy-MM-dd")}";
                 var responses = await CollateJsonResponsesFromServers<string>(endpoint);
 
                 if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))

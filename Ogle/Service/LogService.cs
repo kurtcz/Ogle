@@ -32,7 +32,7 @@ namespace Ogle
         private readonly ILogMetricsRepository<TMetrics> _repo;
 
         private Dictionary<Type, object> _defaultEnums = new Dictionary<Type, object>();
-        private Analyzer GetAnalyzer() => new StopAnalyzer(_luceneVersion);
+        private readonly Func<Analyzer> GetAnalyzer;
 
         public LogService(IOptionsMonitor<OgleOptions> settings) : this(settings, null)
         {
@@ -42,6 +42,7 @@ namespace Ogle
         {
             _settings = settings;
             _repo = repo;
+            GetAnalyzer = () => new LogAnalyzer(_luceneVersion, settings);
         }
 
         public async Task<IEnumerable<TRecord>> GetLogRecords(LogReaderOptions options)
@@ -253,7 +254,7 @@ namespace Ogle
 
             if(!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
             {
-                var indexSearchResult = IndexSearchLogContent(searchTerm, date);
+                var indexSearchResult = IndexSearchLogContent($"\"{searchTerm}\"", date);
 
                 if (!string.IsNullOrEmpty(indexSearchResult))
                 {
@@ -473,7 +474,7 @@ namespace Ogle
 
         private Dictionary<string, string> GetLogContentPerKey(DateOnly date)
         {
-            var raw = new Dictionary<string, StringBuilder>();
+            var contentPerKey = new Dictionary<string, StringBuilder>();
             var props = typeof(TRecord).GetProperties();
             var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
                                                     .Single(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
@@ -487,6 +488,7 @@ namespace Ogle
                                                                .Cast<MandatoryAttribute>())
                                              .Single(i => i.IsKey);
             string? previousId = null;
+            var previousIdGenerated = false;
 
             foreach(var line in ReadLogs(date))
             {
@@ -497,18 +499,29 @@ namespace Ogle
                 //therefore we need to generate one on the fly to be able to aggregate them
                 if (string.IsNullOrEmpty(id))
                 {
-                    id = Guid.NewGuid().ToString("D");
+                    if (previousIdGenerated)
+                    {
+                        id = previousId;
+                    }
+                    else
+                    {
+                        id = Guid.NewGuid().ToString("D");
+                    }
+                }
+                else
+                {
+                    previousIdGenerated = false;
                 }
 
-                if (!raw.ContainsKey(id))
+                if (!contentPerKey.ContainsKey(id))
                 {
-                    raw.Add(id, new StringBuilder());
+                    contentPerKey.Add(id, new StringBuilder());
                 }
-                raw[id].AppendLine(line);
+                contentPerKey[id].AppendLine(line);
                 previousId = id;
             }
 
-            return raw.ToDictionary(k => k.Key, v => v.Value.ToString());
+            return contentPerKey.ToDictionary(k => k.Key, v => v.Value.ToString());
         }
 
         public string HighlightLogContent(string content, string searchTerm)
