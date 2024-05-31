@@ -21,6 +21,8 @@ namespace Ogle
                         options.AllowedSearchPattern = @"\S+";
                         options.LogReaderBackBufferCapacity = 64;
                         options.MaxLogContentLength = 0;
+                        options.MinFulltextTokenLength = 5;
+                        options.MaxFulltextResults = 5;
                         options.MetricsButtonsPosition = MetricsButtonsPosition.Bottom;
                         options.FilterControlsPosition = FilterControlsPosition.Left;
                         options.DatasetColors = new[]

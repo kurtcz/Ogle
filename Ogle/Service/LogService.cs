@@ -848,7 +848,7 @@ namespace Ogle
                     var analyzer = GetAnalyzer();
                     var parser = new QueryParser(_luceneVersion, "_raw", analyzer);
                     var query = parser.Parse(searchTerm);
-                    var topDocs = searcher.Search(query, int.MaxValue);
+                    var topDocs = searcher.Search(query, _settings.CurrentValue.MaxFulltextResults);
 
                     result.AddRange(topDocs.ScoreDocs.Select(i => searcher.Doc(i.Doc).Get("_raw")));
                 }
