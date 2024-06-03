@@ -254,7 +254,7 @@ namespace Ogle
 
             if(!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
             {
-                var indexSearchResult = IndexSearchLogContent($"\"{searchTerm}\"", date);
+                var indexSearchResult = IndexSearchLogContent(EscapeLuceneSpecialChars(searchTerm), date);
 
                 if (!string.IsNullOrEmpty(indexSearchResult))
                 {
@@ -855,6 +855,29 @@ namespace Ogle
             }
 
             return result.Any() ? string.Join("\n", result) : null;
+        }
+
+        private static string EscapeLuceneSpecialChars(string input)
+        {
+            return input.Replace("+", "\\+")
+                        .Replace("-", "\\-")
+                        .Replace("&&", "\\&&")
+                        .Replace("||", "\\||")
+                        .Replace("!", "\\!")
+                        .Replace("(", "\\(")
+                        .Replace(")", "\\)")
+                        .Replace("{", "\\{")
+                        .Replace("}", "\\}")
+                        .Replace("[", "\\[")
+                        .Replace("]", "\\]")
+                        .Replace("^", "\\^")
+                        .Replace("\"", "\\\"")
+                        .Replace("~", "\\~")
+                        .Replace("*", "\\*")
+                        .Replace("?", "\\?")
+                        .Replace(":", "\\:")
+                        .Replace("\\", "\\\\")
+                        .Replace("/", "\\/");
         }
 
         //private IEnumerable<string> Tokenize(string text)

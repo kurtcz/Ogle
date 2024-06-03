@@ -242,7 +242,7 @@
         var hostname = $('#hostname').val();
 
         if (requestId) {
-            var url = url + "?id=" + requestId;
+            var url = url + "?id=" + encodeURIComponent(requestId);
 
             if (date) {
                 url = url + "&date=" + date;
@@ -279,7 +279,7 @@
         $('#loader').show();
 
         var requests = [];
-        requests.push(updateDataForServer('/' + routePrefix + '/GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + $('#id').val() + '&highlight=' + @(Model.Highlight.ToString().LowerCaseFirstCharacter()) + '&rand=' + getRandomInt(1000)));
+        requests.push(updateDataForServer('/' + routePrefix + '/GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + encodeURIComponent($('#id').val()) + '&highlight=' + @(Model.Highlight.ToString().LowerCaseFirstCharacter()) + '&rand=' + getRandomInt(1000)));
 
         $.when.apply($, requests).done(function () {
             $('#loader').hide();

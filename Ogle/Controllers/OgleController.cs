@@ -19,6 +19,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using Ogle.Extensions;
 using System.Net;
+using System.Web;
 
 namespace Ogle
 {
@@ -233,7 +234,7 @@ namespace Ogle
                 }
                 else
                 {
-                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetLogs?date={date?.ToString("yyyy-MM-dd")}&id={id}&highlight={highlight}";
+                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetLogs?date={date?.ToString("yyyy-MM-dd")}&id={HttpUtility.UrlEncode(id)}&highlight={highlight}";
                     var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
                     if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
