@@ -53,10 +53,12 @@ namespace Example
                 //Uncomment the following line to change the default route prefix
                 //options.UseOgleRoutePrefix("/a/b");
 
-                //Uncomment the following line to assign custom authorization policy to a specific action
+                //Uncomment the following lines to assign custom authorization policy to specific Ogle controller actions
                 //options.AddOgleAuthorizationPolicy("SaveMetricsFromAllServers", "Admin");
+                //options.AddOgleAuthorizationPolicy("CreateIndexOnAllServers", "Admin");
+                //options.AddOgleAuthorizationPolicy("DeleteIndexOnAllServers", "Admin");
 
-                //Uncomment the following line to assign custom authorization policy to the whole controller
+                //Uncomment the following line to assign custom authorization policy to the whole Ogle controller
                 //options.AddOgleAuthorizationPolicy("Admin");
             });
             builder.Services.AddRazorPages();

@@ -76,7 +76,7 @@ namespace Ogle
             var lineNumber = 0;
             string? generatedId = null;            
 
-            foreach (var line in ReadLogs(options.Date.Value))
+            foreach (var line in ReadLogs(options.Date.Value).Select(i => i.Line))
             {
                 var recordCreated = false;
                 var patternFound = false;
@@ -251,16 +251,20 @@ namespace Ogle
             var previousLineMatched = false;
             var backBuffer = new LinkedList<string>();
             var sb = new StringBuilder();
+            string firstFile = null;
+            int? firstLine = null;
 
-            if(!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
+            if (!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
             {
                 var indexSearchResult = IndexSearchLogContent(EscapeLuceneSpecialChars(searchTerm), date);
 
                 if (!string.IsNullOrEmpty(indexSearchResult))
                 {
                     sb.Append(indexSearchResult);
-
-                    return sb.ToString();
+                }
+                if (date.HasValue)
+                {
+                    (firstFile, firstLine) = GetBookmark(date.Value);
                 }
             }
             else if (!date.HasValue)
@@ -268,7 +272,7 @@ namespace Ogle
                 throw new ArgumentNullException(nameof(date));
             }
 
-            foreach (var logLine in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today)))
+            foreach (var logLine in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, firstLine).Select(i => i.Line))
             {
                 if (logLine.Contains(searchTerm))
                 {
@@ -426,7 +430,7 @@ namespace Ogle
             Directory.Delete(indexPath);
         }
 
-        public IndexReader CreateIndex(DateOnly date, bool overWriteExisting)
+        public IndexReader CreateIndex(DateOnly date, bool overwriteExisting)
         {
             var indexPath = DateToIndexPath(date);
 
@@ -436,7 +440,7 @@ namespace Ogle
             }
             if (HasIndex(date))
             {
-                if (overWriteExisting)
+                if (overwriteExisting)
                 {
                     DeleteIndex(date);
                 }
@@ -450,14 +454,15 @@ namespace Ogle
                 Directory.CreateDirectory(_settings.CurrentValue.LogIndexFolder);
             }
 
-            var grouppedLogLines = GetLogContentPerKey(date).Values;
+            (string? lastFile, int lastLine) = GetBookmark(date);
+            var grouppedLogLines = GetLogContentPerKey(date, ref lastFile, ref lastLine).Values;
             var analyzer = GetAnalyzer();
             var indexConfig = new IndexWriterConfig(_luceneVersion, analyzer)
             {
-                OpenMode = OpenMode.CREATE
+                OpenMode = overwriteExisting ? OpenMode.CREATE : OpenMode.CREATE_OR_APPEND
             };
 
-            using(var writer = new IndexWriter(FSDirectory.Open(indexPath), indexConfig))
+            using (var writer = new IndexWriter(FSDirectory.Open(indexPath), indexConfig))
             {
                 foreach(var item in grouppedLogLines)
                 {
@@ -468,11 +473,42 @@ namespace Ogle
                     writer.AddDocument(doc);
                 }
                 writer.Commit();
+                SaveBookmark(date, lastFile, lastLine);
+
                 return writer.GetReader(false);
             }
         }
 
-        private Dictionary<string, string> GetLogContentPerKey(DateOnly date)
+        private string GetBookmarkPath(DateOnly date)
+        {
+            return Path.Combine(_settings.CurrentValue.LogIndexFolder, date.ToString("yyyyMMdd"), "bookmark.txt");
+        }
+
+        private (string?, int) GetBookmark(DateOnly date)
+        {
+            var bookmarkPath = GetBookmarkPath(date);
+            var content = File.Exists(bookmarkPath) ? File.ReadAllLines(bookmarkPath) : null;
+
+            string? file = null;
+            int line = 0;
+
+            if (content?.Length == 2 &&
+                int.TryParse(content[1], out line))
+            {
+                file = content[0];
+            }
+
+            return (file, line);
+        }
+
+        private void SaveBookmark(DateOnly date, string file, int line)
+        {
+            var bookmarkPath = GetBookmarkPath(date);
+
+            File.WriteAllText(bookmarkPath, $"{file}\n{line}");
+        }
+
+        private Dictionary<string, string> GetLogContentPerKey(DateOnly date, ref string? lastFile, ref int lastLine)
         {
             var contentPerKey = new Dictionary<string, StringBuilder>();
             var props = typeof(TRecord).GetProperties();
@@ -489,11 +525,16 @@ namespace Ogle
                                              .Single(i => i.IsKey);
             string? previousId = null;
             var previousIdGenerated = false;
+            var firstFile = lastFile;
+            var firstLine = lastLine;
 
-            foreach(var line in ReadLogs(date))
+            foreach(var lineContext in ReadLogs(date, firstFile, firstLine))
             {
-                var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
+                var mandatoryMatch = mandatoryAttribute.Regex.Match(lineContext.Line);
                 var id = mandatoryMatch.Success ? mandatoryMatch.Groups[keyAttribute.MatchGroup].Value : previousId;
+
+                lastFile = lineContext.Filename;
+                lastLine = lineContext.LineNumber;
 
                 //some events like application restarts do not have a request id
                 //therefore we need to generate one on the fly to be able to aggregate them
@@ -517,7 +558,7 @@ namespace Ogle
                 {
                     contentPerKey.Add(id, new StringBuilder());
                 }
-                contentPerKey[id].AppendLine(line);
+                contentPerKey[id].AppendLine(lineContext.Line);
                 previousId = id;
             }
 
@@ -616,15 +657,33 @@ namespace Ogle
             return logFiles;
         }
 
-        public IEnumerable<string> ReadLogs(DateOnly date)
+        public IEnumerable<ReadLineContext> ReadLogs(DateOnly date, string? firstFile = null, int? firstLine = null)
         {
             foreach (var file in GetLogFilenames(date))
             {
+                if (firstFile != null &&
+                    string.Compare(file, firstFile) < 0)
+                {
+                    continue;
+                }
                 var logLines = ReadLinesWithoutLocking(file);
+                var isFirstFile = firstFile != null && string.Compare(file, firstFile) == 0;
+                var lineNumber = 0;
 
                 foreach (var line in logLines)
                 {
-                    yield return line;
+                    if (isFirstFile &&
+                        lineNumber++ < firstLine)
+                    {
+                        continue;
+                    }
+
+                    yield return new ReadLineContext
+                    {
+                        Filename = file,
+                        LineNumber = lineNumber,
+                        Line = line
+                    };
                 }
             }
         }

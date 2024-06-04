@@ -97,7 +97,8 @@ builder.Services.AddControllers(options =>
 - To search and download logs navigate to `/ogle`
 - To view log metrics navigate to `/ogle/metrics`
 - If you opt in to using full-text log search then you need to define 'LogIndexFolder' in your settings file. Full-text index improves search speed but it takes up around 50% more disc space.
-- To create an index at the each day call `/ogle/CreateIndexOnAllServers?date=yyyy-MM-dd&overwriteExisting=true`
+- To create or update an index call `/ogle/CreateIndexOnAllServers?date=yyyy-MM-dd`
+- To recreate an index call `/ogle/CreateIndexOnAllServers?date=yyyy-MM-dd&overwriteExisting=true`
 - To delete an existing full-text index call `/ogle/DeleteIndexOnAllServers?date=yyyy-MM-dd`
 
 Call to fetch metrics for a given day will be distributed to all web application nodes, which will parse the logs and return the metrics which will then be displayed on the chart and in the table below.
