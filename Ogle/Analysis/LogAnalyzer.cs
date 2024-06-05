@@ -12,6 +12,8 @@ namespace Ogle
     public class LogAnalyzer : StopwordAnalyzerBase
     {
         private readonly int _minFulltextTokenLength;
+        private readonly int _maxFulltextTokenLength;
+        private readonly char[]? _fulltextTokenSeparators;
         private static readonly CharArraySet ENGLISH_STOP_WORDS_SET = LoadEnglishStopwordSet();
 
         private static CharArraySet LoadEnglishStopwordSet()
@@ -34,14 +36,16 @@ namespace Ogle
             :base(luceneVersion, stopWords)
         {
             _minFulltextTokenLength = settings.CurrentValue.MinFulltextTokenLength;
+            _maxFulltextTokenLength = settings.CurrentValue.MaxFulltextTokenLength;
+            _fulltextTokenSeparators = settings.CurrentValue.FulltextTokenSeparators?.ToCharArray();
         }
 
         protected override TokenStreamComponents CreateComponents(string fieldName, TextReader reader)
         {
-            Tokenizer source = new LogTokenizer(m_matchVersion, reader);
+            Tokenizer source = new LogTokenizer(m_matchVersion, reader, _fulltextTokenSeparators);
             TokenStream tokenStream;
 
-            tokenStream = new LengthFilter(m_matchVersion, source, _minFulltextTokenLength, int.MaxValue);
+            tokenStream = new LengthFilter(m_matchVersion, source, _minFulltextTokenLength, _maxFulltextTokenLength);
             tokenStream = new StopFilter(m_matchVersion, tokenStream, m_stopwords);
 
             return new TokenStreamComponents(source, tokenStream);

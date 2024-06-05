@@ -31,14 +31,18 @@ Ogle is suitable for applications written in .NET 6
 "Ogle": {
     "LogFolder": "logs",    //set path to the log folder
     "LogFilePattern": "Sample-{0:yyyyMMdd}.log",    //set log file name pattern
-    "LogIndexFolder": "logs/index", //set path to the full-text index folder (optional)
+    "LogIndexFolder": "logs/index", //set path to the full-text index folder (optional, set in order to use full-text indexing)
     "Layout": "_Layout",    //optionally make Ogle pages use your website's layout cshtml file
     "AllowedSearchPattern": "\\S{5,}",  //regex pattern used for validation of the search term
-    "MinFulltextTokenLength": 5, //minimal length of full-text tokens that gets indexed (optional)
+    "MinFulltextTokenLength": 6,    //minimal length of full-text tokens that gets indexed (optional, default=5)
+    "MaxFulltextTokenLength": 32,   //maximal length of full-text tokens that gets indexed (optional)
+    "FulltextTokenSeparators": " \t.:;'`\"()[]{}=+*\\/",    //full-text token separator characters (optional, default=any character except for letters and digits)
+    "MaxFulltextResults": 1, //maximum results to return from full-text query (optional, default=5)
     "MaxLogContentLength": 1048576, //limit log search output to 1MB (optional)
     "LogReaderBackBufferCapacity": 128, //set back buffer capacity (optional, default=64)
     "HttpPort": 8080,   //set application HTTP port (optional, default=80)
     "HttpsPort": 4430,  //set application HTTPS port (optional, default=443)
+    "IndexActionRedirectUrl": "/ogle/metrics", //url to redirect /ogle/ to (optional, default=/ogle/Logs)
     "Hostnames": [
         "localhost"     //add all the hosts where your application is running
     ]
@@ -83,25 +87,32 @@ builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
 });
 builder.Services.AddControllers(options =>
 {
-    //optionally define a custom route prefix
+    //optionally define a custom route prefix for Ogle controller
     //options.UseOgleRoutePrefix("/custom-prefix");
 
     //optionally define a custom authorization policy for a the whole controller
     //options.AddOgleAuthorizationPolicy("AdminPolicy");
 
-    //optionally define a custom authorization policy for a specific action
+    //optionally define a custom authorization policy for specific actions
     //options.AddOgleAuthorizationPolicy("SaveMetricsFromAllServers", "AdminPolicy");
+    //options.AddOgleAuthorizationPolicy("CreateIndexOnAllServers", "AdminPolicy");
+    //options.AddOgleAuthorizationPolicy("DeleteIndexOnAllServers", "AdminPolicy");
 });
 ```
 - Ogle adds two new endpoints to your application.
-- To search and download logs navigate to `/ogle`
+- To search and download logs navigate to `/ogle/logs`
 - To view log metrics navigate to `/ogle/metrics`
-- If you opt in to using full-text log search then you need to define 'LogIndexFolder' in your settings file. Full-text index improves search speed but it takes up around 50% more disc space.
+- By default navigating to `/ogle/` redirects to `/ogle/logs`
+
+Call to fetch metrics for a given day will be distributed to all web application nodes, which will parse the logs and return the metrics which will then be displayed on the chart and in the table below.
+
+### Full-text indexing
+- If you opt in to using full-text log search then you need to define `LogIndexFolder` in your settings file. Full-text index improves search speed at the expense of additional disc space.
 - To create or update an index call `/ogle/CreateIndexOnAllServers?date=yyyy-MM-dd`
 - To recreate an index call `/ogle/CreateIndexOnAllServers?date=yyyy-MM-dd&overwriteExisting=true`
 - To delete an existing full-text index call `/ogle/DeleteIndexOnAllServers?date=yyyy-MM-dd`
 
-Call to fetch metrics for a given day will be distributed to all web application nodes, which will parse the logs and return the metrics which will then be displayed on the chart and in the table below.
+The date parameter is optional and defaults to the previous day.
 
 ## Ogle Repository
 Parsing request metrics from the logs is a time consuming task - to shorten metrics response times register one of Ogle Repository NuGet packages. 
@@ -135,6 +146,8 @@ builder.Services.AddOgleSqliteRepository<LogMetrics>(configurationSection);
 To save metrics for a given day to a file or database call
 
 `/ogle/SaveMetricsFromAllServers?date=yyyy-MM-dd`
+
+The date parameter is optional and defaults to the previous day.
 
 The endpoint will distribute the request to all web application nodes, the metrics will be collated and saved. The endpoint will respond with a number of metrics saved. Consequtive calls for the same date will overwrite any potential previous data saved for the same date before.
 

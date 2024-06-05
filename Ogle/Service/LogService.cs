@@ -251,7 +251,7 @@ namespace Ogle
             var previousLineMatched = false;
             var backBuffer = new LinkedList<string>();
             var sb = new StringBuilder();
-            string firstFile = null;
+            string? firstFile = null;
             int? firstLine = null;
 
             if (!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))

@@ -18,10 +18,13 @@ namespace Ogle
                         options.DrillDownMinutesPerBucket = 1;
                         options.DrillDownNumberOfBuckets = 60;
                         options.LogParserTimeout = TimeSpan.FromSeconds(300);
+                        options.IndexActionRedirectUrl = null;
                         options.AllowedSearchPattern = @"\S+";
                         options.LogReaderBackBufferCapacity = 64;
                         options.MaxLogContentLength = 0;
                         options.MinFulltextTokenLength = 5;
+                        options.MaxFulltextTokenLength = int.MaxValue;
+                        options.FulltextTokenSeparators = null;
                         options.MaxFulltextResults = 5;
                         options.MetricsButtonsPosition = MetricsButtonsPosition.Bottom;
                         options.FilterControlsPosition = FilterControlsPosition.Left;

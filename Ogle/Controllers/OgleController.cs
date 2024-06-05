@@ -40,9 +40,15 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/")]
-        [Route("/ogle/Logs")]
         [Route("/ogle/Index")]
-        public IActionResult Index(string? id, string? hostName, DateTime? date, bool highlight = true)
+        public RedirectResult Index()
+        {
+            return Redirect(_settings.CurrentValue.IndexActionRedirectUrl ?? $"/{ControllerContext.GetRoutePrefix()}/Logs");
+        }
+
+        [HttpGet]
+        [Route("/ogle/Logs")]
+        public IActionResult Logs(string? id, string? hostName, DateTime? date, bool highlight = true)
         {
             try
             {

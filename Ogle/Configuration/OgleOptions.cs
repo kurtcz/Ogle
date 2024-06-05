@@ -11,12 +11,15 @@ namespace Ogle
         public string LogIndexFolder { get; set; }
         public string AllowedSearchPattern { get; set; }
         public int MinFulltextTokenLength { get; set; }
+        public int MaxFulltextTokenLength { get; set; }
+        public string FulltextTokenSeparators { get; set; }
         public int MaxFulltextResults { get; set; }
         public int LogReaderBackBufferCapacity { get; set; }
         public int MaxLogContentLength { get; set; }
         public int HttpPort { get; set; }
         public int HttpsPort { get; set; }
         public string Layout { get; set; }
+        public string IndexActionRedirectUrl { get; set; }
         public string[] Hostnames { get; set; }
         public string[] DatasetColors { get; set; }
         public MetricsButtonsPosition MetricsButtonsPosition { get; set; }
