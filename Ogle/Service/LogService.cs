@@ -438,16 +438,9 @@ namespace Ogle
             {
                 throw new InvalidOperationException("Log index folder not specified");
             }
-            if (HasIndex(date))
+            if (HasIndex(date) && overwriteExisting)
             {
-                if (overwriteExisting)
-                {
-                    DeleteIndex(date);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Index already exists");
-                }
+                DeleteIndex(date);
             }
             if (!Directory.Exists(_settings.CurrentValue.LogIndexFolder))
             {
