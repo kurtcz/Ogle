@@ -252,7 +252,7 @@ namespace Ogle
             var backBuffer = new LinkedList<string>();
             var sb = new StringBuilder();
             string? firstFile = null;
-            int? firstLine = null;
+            int firstLine = 0;
 
             if (!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
             {
@@ -272,7 +272,7 @@ namespace Ogle
                 throw new ArgumentNullException(nameof(date));
             }
 
-            foreach (var logLine in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, firstLine).Select(i => i.Line))
+            foreach (var logLine in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, ++firstLine).Select(i => i.Line))
             {
                 if (logLine.Contains(searchTerm))
                 {
@@ -447,7 +447,13 @@ namespace Ogle
                 Directory.CreateDirectory(_settings.CurrentValue.LogIndexFolder);
             }
 
-            (string? lastFile, int lastLine) = GetBookmark(date);
+            string? lastFile = null;
+            int lastLine = 0;
+
+            if (!overwriteExisting)
+            {
+                (lastFile, lastLine) = GetBookmark(date);
+            }
             var grouppedLogLines = GetLogContentPerKey(date, ref lastFile, ref lastLine).Values;
             var analyzer = GetAnalyzer();
             var indexConfig = new IndexWriterConfig(_luceneVersion, analyzer)
@@ -519,7 +525,7 @@ namespace Ogle
             string? previousId = null;
             var previousIdGenerated = false;
             var firstFile = lastFile;
-            var firstLine = lastLine;
+            var firstLine = lastLine + 1;
 
             foreach(var lineContext in ReadLogs(date, firstFile, firstLine))
             {
@@ -650,23 +656,29 @@ namespace Ogle
             return logFiles;
         }
 
-        public IEnumerable<ReadLineContext> ReadLogs(DateOnly date, string? firstFile = null, int? firstLine = null)
+        public IEnumerable<ReadLineContext> ReadLogs(DateOnly date, string? firstFile = null, int firstLine = 1)
         {
+            var isFirstFile = true;
+            var firstFilenameWithoutExtension = Path.GetFileNameWithoutExtension(firstFile);
+
             foreach (var file in GetLogFilenames(date))
             {
+                var filenameWithoutExtension = Path.GetFileNameWithoutExtension(file);
+
                 if (firstFile != null &&
-                    string.Compare(file, firstFile) < 0)
+                    string.Compare(filenameWithoutExtension, firstFilenameWithoutExtension) < 0)
                 {
                     continue;
                 }
                 var logLines = ReadLinesWithoutLocking(file);
-                var isFirstFile = firstFile != null && string.Compare(file, firstFile) == 0;
                 var lineNumber = 0;
 
                 foreach (var line in logLines)
                 {
+                    lineNumber++;
+
                     if (isFirstFile &&
-                        lineNumber++ < firstLine)
+                        lineNumber <= firstLine)
                     {
                         continue;
                     }
@@ -678,6 +690,8 @@ namespace Ogle
                         Line = line
                     };
                 }
+
+                isFirstFile = false;
             }
         }
 
