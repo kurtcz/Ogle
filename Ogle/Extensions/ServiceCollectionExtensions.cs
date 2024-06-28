@@ -28,17 +28,18 @@ namespace Ogle
                         options.MaxFulltextResults = 5;
                         options.MetricsButtonsPosition = MetricsButtonsPosition.Bottom;
                         options.FilterControlsPosition = FilterControlsPosition.Left;
-                        options.DatasetColors = new[]
-                        {
-                            "#cf2233",
-                            "#f26946",
-                            "#fae80b",
-                            "#62c742",
-                            "#2d63af",
-                            "#4d3292",
-                            "#f9cde0",
-                            "#81592f"
-                        };
+                        options.DatasetColors = new string[0];
+                        //{
+                        //    "#cf2233",
+                        //    "#f26946",
+                        //    "#fae80b",
+                        //    "#62c742",
+                        //    "#2d63af",
+                        //    "#4d3292",
+                        //    "#f9cde0",
+                        //    "#81592f"
+                        //};
+                        options.LineTension = 0;
                     });
 
             return services;

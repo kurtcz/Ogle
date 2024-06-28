@@ -7,8 +7,8 @@
     Layout = Model.Layout ?? "_OgleLayout";
     ViewBag.Title = "Log Metrics";
 }
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"></script>
 <script src="~/_content/Ogle/js/chart.plugin.datatable-filler.js"></script>
 
 <link rel="stylesheet" href="~/_content/Ogle/css/site.css" />
@@ -59,9 +59,10 @@
         margin-top: 5px;
     }
 
-    #canvas {
-        margin: auto;
-        display: block;
+    #canvasContainer {
+        display: inline-block;
+        position: relative;
+        width: 100%;
     }
 
     #dataTable {
@@ -179,7 +180,9 @@
             <div id="chartContainer">
                 <h4 id="chartLabel"></h4>
                 <div id="loader" class="loader"></div>
-                <canvas id="canvas"></canvas>
+                <div id="canvasContainer">
+                    <canvas id="canvas"></canvas>
+                </div>
             </div>
             @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Center)
             {
@@ -276,7 +279,8 @@
     }
 
     var serverNames = [@Html.Raw(string.Join(", ", Model.ServerUrls.Select(i => $"'{new Uri(i).Host.ToLower()}'")))];
-    var datasetColors = [@Html.Raw(string.Join(", ", settings.CurrentValue.DatasetColors.Select(i => $"'{i}'")))];
+    var chartTypes = [@Model.];
+    var datasetColors = [@Html.Raw(settings.CurrentValue.DatasetColors != null ? string.Join(", ", settings.CurrentValue.DatasetColors.Select(i => $"'{i}'")) : string.Empty)];
     var chartDatasets = [];
     var firstTimeShowMetrics = true;
 
@@ -296,28 +300,51 @@
             datasets: []
         },
         options: {
+            label: 'Label',
             scales: {
-                yAxes: [{
+                y: {
                     stacked: true
-                }]
+                }
             },
             elements: {
                 line: {
                     tension: 0.1    //0 = sharp edges, 0.5 = smoother, 1 = smooth
                 }
             },
-            tooltips: {
-                callbacks: {
-                    label: function (toolTipItem, data) {
-                        var label = data.datasets[toolTipItem.datasetIndex].label + ': ';
-
-                        switch (activeTab) {
-
-                        }
-                    }
-                }
+            interaction: {
+                mode: 'x'
             },
             plugins: {
+                color: {
+                    enable: true
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            var value = context.raw;
+
+                            switch (activeTab) {
+@{
+    i = 0;
+    if (Model.ValuePropertyTypes.Any(j => j == "TimeSpan"))
+    {
+        foreach (var prop in Model.ValueProperties)
+        {
+            if (Model.ValuePropertyTypes[i] == "TimeSpan")
+            {
+                @Html.Raw($"\t\t\t\t\t\tcase '{prop}':\n");
+            }
+            i++;
+        }
+        @Html.Raw("\t\t\t\t\t\t\tvalue = secondsToTimeFormat(Number(context.raw));\n");
+    }
+}
+                            }
+
+                            return context.dataset.label + ': ' + value;
+                        }
+                    }
+                },
                 'datatable-filler': {
                     target: 'dataTable',
                     aggregateRows: 'sum',
@@ -368,7 +395,7 @@
     for (var i in serverNames) {
         config.data.datasets[i] = {
             label: serverNames[i],
-            borderColor: datasetColors[i % datasetColors.length],
+            borderColor: datasetColors.length > 0 ? datasetColors[i % datasetColors.length] : null,
         };
     }
 
@@ -743,10 +770,13 @@
 }
         }
 
-        config.options.scales.yAxes = [{
+        config.options.scales.x = {
+            stacked: stacked,
+        };
+        config.options.scales.y = {
             stacked: stacked,
             ticks: ticks
-        }];
+        };
         config.options.plugins['datatable-filler'].aggregateRows = aggregateRows;
         config.data.labels = dataResponses.bucketNames;
         config.data.datasets = [];
@@ -755,8 +785,10 @@
             config.data.datasets[i] = {
                 label: labels[i],
                 data: datasets[i],
-                borderColor: datasetColors[i % datasetColors.length],
-                backgroundColor: datasetColors[i % datasetColors.length] + (stacked ? 'dd' : '20')
+                borderColor: datasetColors.length > 0 ? datasetColors[i % datasetColors.length] : null,
+                backgroundColor: datasetColors.length > 0 ? datasetColors[i % datasetColors.length] + (stacked ? 'dd' : '20') : null,
+                fill: true,
+                tension: @(settings.CurrentValue.LineTension)
             };
         }
 

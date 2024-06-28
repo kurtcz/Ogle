@@ -3,9 +3,9 @@
 'use strict';
 
 (function () {
-    Chart.plugins.register({
+    Chart.register({
         id: 'datatable-filler',
-        beforeInit: function (chart, options) {
+        beforeInit: function (chart, args, options) {
             this.element = document.getElementById(options.target);
             this.callback = options.callback;
             this.datasetHeaderRowStyle = options.datasetHeaderRowStyle;
