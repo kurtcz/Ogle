@@ -20,6 +20,7 @@ using System.Text.RegularExpressions;
 using Ogle.Extensions;
 using System.Net;
 using System.Web;
+using System.Text.Json.Serialization;
 
 namespace Ogle
 {
@@ -367,23 +368,23 @@ namespace Ogle
                                                .ToArray();
                 var valueProps = _settings.CurrentValue.MetricsType.GetProperties()
                                           .Where(i => !keyProps.Contains(i.Name) &&
-                                                      i.GetCustomAttribute(typeof(HiddenAttribute)) == null)
+                                                      i.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
                                           .Select(i => i.Name)
                                           .ToArray();
                 var valueTypes = _settings.CurrentValue.MetricsType.GetProperties()
                                           .Where(i => !keyProps.Contains(i.Name) &&
-                                                      i.GetCustomAttribute(typeof(HiddenAttribute)) == null)
+                                                      i.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
                                           .Select(i => i.PropertyType.Name)
                                           .ToArray();
                 var valueDisplayNames = _settings.CurrentValue.MetricsType.GetProperties()
                                                  .Where(i => !keyProps.Contains(i.Name) &&
-                                                             i.GetCustomAttribute(typeof(HiddenAttribute)) == null)
+                                                             i.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
                                                  .Select(i => (i.GetCustomAttribute(typeof(DisplayNameAttribute))
                                                                as DisplayNameAttribute)?.DisplayName ?? i.Name)
                                                  .ToArray();
                 var aggregationFunc = _settings.CurrentValue.MetricsType.GetProperties()
                                                .Where(i => !keyProps.Contains(i.Name) &&
-                                                           i.GetCustomAttribute(typeof(HiddenAttribute)) == null)
+                                                           i.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
                                                .Select(i => i.GetCustomAttribute(typeof(AggregateAttribute)) as AggregateAttribute)
                                                .Select(i => i != null ? i.AggregationOperation.ToString().LowerCaseFirstCharacter() : "sum")
                                                .ToArray();
