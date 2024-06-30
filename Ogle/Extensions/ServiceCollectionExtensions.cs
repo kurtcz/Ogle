@@ -39,7 +39,6 @@ namespace Ogle
                         //    "#f9cde0",
                         //    "#81592f"
                         //};
-                        options.LineTension = 0;
                     });
 
             return services;

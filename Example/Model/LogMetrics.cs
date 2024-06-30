@@ -8,6 +8,7 @@ namespace Example.Model
     {
         [Total]
         [DisplayName("Total Requests")]
+        [ChartOptions(ChartType.Bar)]
         public int TotalRequests { get; set; }
 
         [DisplayName("Successful Requests")]
@@ -22,6 +23,7 @@ namespace Example.Model
 
         [Aggregate(AggregationOperation.Avg)]
         [DisplayName("Avg Items")]
+        [ChartOptions(ChartType.Line, tension: 0.5f)]
         public int AvgItems { get; set; }
 
         [Aggregate(AggregationOperation.Min)]

@@ -12,6 +12,7 @@ namespace Ogle
         public string[] ValuePropertyTypes { get; set; }
         public string[] ValuePropertyDisplayNames { get; set; }
         public string[] ValuePropertyAggregationOperation { get; set; }
+        public ChartOptionsAttribute[] ValuePropertyChartOptions { get; set; }
         public MetricsButtonsPosition ViewButtonsPosition { get; set; }
         public FilterControlsPosition FilterPosition { get; set; }
         public string TotalProperty { get; set; }

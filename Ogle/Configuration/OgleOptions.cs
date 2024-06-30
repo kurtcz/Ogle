@@ -22,7 +22,6 @@ namespace Ogle
         public string IndexActionRedirectUrl { get; set; }
         public string[] Hostnames { get; set; }
         public string[] DatasetColors { get; set; }
-        public float LineTension { get; set; }
         public MetricsButtonsPosition MetricsButtonsPosition { get; set; }
         public FilterControlsPosition FilterControlsPosition { get; set; }
         public int DefaultMinutesPerBucket { get; set; }

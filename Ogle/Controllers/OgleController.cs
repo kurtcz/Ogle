@@ -397,6 +397,11 @@ namespace Ogle
                                          .Where(i => i.GetCustomAttributes(true).Any(j => j is TotalAttribute))
                                          .Select(i => i.Name.LowerCaseFirstCharacter())
                                          .SingleOrDefault() ?? valueProps.First();
+                var chartOptions = _settings.CurrentValue.MetricsType.GetProperties()
+                                            .Where(i => !keyProps.Contains(i.Name) &&
+                                                        i.GetCustomAttribute(typeof(JsonIgnoreAttribute)) == null)
+                                            .Select(i => i.GetCustomAttribute(typeof(ChartOptionsAttribute)) as ChartOptionsAttribute ?? ChartOptionsAttribute.Default)
+                                            .ToArray();
 
                 return View(new MetricsViewModel
                 {
@@ -420,6 +425,7 @@ namespace Ogle
                     ValuePropertyTypes = valueTypes,
                     ValuePropertyDisplayNames = valueDisplayNames,
                     ValuePropertyAggregationOperation = aggregationFunc,
+                    ValuePropertyChartOptions = chartOptions,
                     TimeBuckets = timeBuckets,
                     TimeBucketProperty = timeBucketProp,
                     TotalProperty = totalProp

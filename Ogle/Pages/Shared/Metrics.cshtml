@@ -143,7 +143,7 @@
         </div>
         <div class="left">
             @if (Model.FilterPosition == FilterControlsPosition.Left)
-            {
+                {
                 <div id="filterContainer">
                     <h6>Filter:</h6>
                     @{
@@ -161,9 +161,9 @@
                         }
                     }
                 </div>
-            }
+                        }
             @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Left)
-            {
+                {
                 <div id="viewButtonsLeftContainer" class="viewButtonsContainer">
                     @{
                         i = 0;
@@ -174,7 +174,7 @@
                         }
                     }
                 </div>
-            }
+                        }
         </div>
         <div class="main">
             <div id="chartContainer">
@@ -185,7 +185,7 @@
                 </div>
             </div>
             @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Center)
-            {
+                {
                 <div id="viewButtonsContainer" class="viewButtonsContainer">
                     @{
                         i = 0;
@@ -196,11 +196,11 @@
                         }
                     }
                 </div>
-            }
+                        }
         </div>
         <div class="right">
             @if (Model.FilterPosition == FilterControlsPosition.Right)
-            {
+                {
                 <div id="filterContainer">
                     <h6>Filter:</h6>
                     @{
@@ -218,9 +218,9 @@
                         }
                     }
                 </div>
-            }
+                        }
             @if (Model.ViewButtonsPosition == MetricsButtonsPosition.Right)
-            {
+                {
                 <div id="viewButtonsRightContainer" class="viewButtonsContainer">
                     @{
                         i = 0;
@@ -231,7 +231,7 @@
                         }
                     }
                 </div>
-            }
+                        }
         </div>
         <div class="bottom">
             <div id="viewButtonsBottomContainer" class="viewButtonsContainer">
@@ -279,7 +279,19 @@
     }
 
     var serverNames = [@Html.Raw(string.Join(", ", Model.ServerUrls.Select(i => $"'{new Uri(i).Host.ToLower()}'")))];
-    var chartTypes = [@Model.];
+    var chartOptions = {
+@{
+    i = 0;
+    foreach (var prop in Model.ValueProperties)
+    {
+        @Html.Raw($"\t\t\t'{prop}': {{\n");
+        @Html.Raw($"\t\t\t\ttype: '{Model.ValuePropertyChartOptions[i].ChartType.ToString().ToLower()}',\n")
+        @Html.Raw($"\t\t\t\ttension: '{Model.ValuePropertyChartOptions[i].Tension.ToString().ToLower()}'\n")
+        @Html.Raw("\t\t\t},\n");
+        i++;
+    }
+}
+    };
     var datasetColors = [@Html.Raw(settings.CurrentValue.DatasetColors != null ? string.Join(", ", settings.CurrentValue.DatasetColors.Select(i => $"'{i}'")) : string.Empty)];
     var chartDatasets = [];
     var firstTimeShowMetrics = true;
@@ -290,10 +302,12 @@
         @Html.Raw($"\tchartDatasets['{prop}'] = {initialChartData};\n");
     }
 }
+    var chartMode = '@(Model.KeyProperties.FirstOrDefault(j => j != Model.TimeBucketProperty))';
+    var activeTab = '@(Model.ValueProperties.FirstOrDefault())';
     var dataResponses = resetDataResponses();
     var ctx = $("#canvas")[0].getContext('2d');
     var config = {
-        type: 'line',
+        type: chartOptions[activeTab].type,//'line',
         data: {
             //TODO: make this generic (currently we assume 60 minutes per bucket)
             labels: [@Html.Raw(string.Join(", ", Enumerable.Range(0, Model.NumberOfBuckets).Select(i => string.Format("'{0}:00'", i))))],
@@ -308,7 +322,7 @@
             },
             elements: {
                 line: {
-                    tension: 0.1    //0 = sharp edges, 0.5 = smoother, 1 = smooth
+                    tension: chartOptions[activeTab].tension    //0 = sharp edges, 0.5 = smoother, 1 = smooth
                 }
             },
             interaction: {
@@ -451,8 +465,6 @@
             return secondsToTimeFormat(value);
         }
     };
-    var chartMode = '@(Model.KeyProperties.FirstOrDefault(j => j != Model.TimeBucketProperty))';
-    var activeTab = '@(Model.ValueProperties.FirstOrDefault())';
     var chart = new Chart(ctx, config);
 
     Object.defineProperty(Array.prototype, "distinctCaseInsensitive", {
@@ -770,6 +782,8 @@
 }
         }
 
+        config.type = chartOptions[activeTab].type;
+        config.tension = chartOptions[activeTab].tension;
         config.options.scales.x = {
             stacked: stacked,
         };
@@ -786,9 +800,9 @@
                 label: labels[i],
                 data: datasets[i],
                 borderColor: datasetColors.length > 0 ? datasetColors[i % datasetColors.length] : null,
-                backgroundColor: datasetColors.length > 0 ? datasetColors[i % datasetColors.length] + (stacked ? 'dd' : '20') : null,
+                backgroundColor: datasetColors.length > 0 ? datasetColors[i % datasetColors.length] + (chartOptions[activeTab].type == 'bar' || stacked ? 'dd' : '20') : null,
                 fill: true,
-                tension: @(settings.CurrentValue.LineTension)
+                tension: chartOptions[activeTab].tension
             };
         }
 
