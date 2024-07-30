@@ -49,7 +49,7 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/Logs")]
-        public IActionResult Logs(string? id, string? hostName, DateTime? date, bool highlight = true)
+        public IActionResult Logs(string? id, string? hostName, DateTime? date, string? filePattern = null, bool highlight = true)
         {
             try
             {
@@ -73,6 +73,7 @@ namespace Ogle
                     Layout = _settings.CurrentValue.Layout,
                     RoutePrefix = ControllerContext.GetRoutePrefix(),
                     Id = id,
+                    FilePattern = filePattern,
                     Date = date.HasValue ? DateOnly.FromDateTime(date.Value) : null,
                     HostName = hostName,
                     Highlight = highlight,
@@ -95,13 +96,17 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/BrowseLogFiles")]
-        public async Task<IActionResult> BrowseLogFiles(DateTime? date, string? hostname)
+        public async Task<IActionResult> BrowseLogFiles(DateTime? date, string? hostname, string? filePattern)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(filePattern))
+                {
+                    filePattern = null;
+                }
                 if (!string.IsNullOrWhiteSpace(hostname))
                 {
-                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/BrowseLogFiles?date={date:yyyy-MM-dd}";
+                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/BrowseLogFiles?filePattern={filePattern}&date={date:yyyy-MM-dd}";
                     var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
                     if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))
@@ -135,6 +140,10 @@ namespace Ogle
                     var fileSizes = new StringBuilder();
                     DateOnly? dateOnly = date.HasValue ? DateOnly.FromDateTime(date.Value) : null;
 
+                    if (string.IsNullOrWhiteSpace(filePattern))
+                    {
+                        filePattern = null;
+                    }
                     sb.AppendLine("<div class=\"browseFilesContainer\">");
                     fileNames.AppendLine("<pre>");
                     fileDates.AppendLine("<pre>");
@@ -142,7 +151,7 @@ namespace Ogle
                     fileNames.AppendLine("Filename");
                     fileDates.AppendLine("Last write time");
                     fileSizes.AppendLine("File size");
-                    foreach (var path in logService.GetLogFilenames(dateOnly))
+                    foreach (var path in logService.GetLogFilenames(dateOnly, filePattern))
                     {
                         var fi = new FileInfo(path);
                         var filename = Path.GetFileName(path);
@@ -172,7 +181,7 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/GetLogs")]
-        public async Task<IActionResult> GetLogs(DateTime? date, string id, bool highlight = true)
+        public async Task<IActionResult> GetLogs(DateTime? date, string id, string? filePattern = null, bool highlight = true)
         {
             try
             {
@@ -183,7 +192,11 @@ namespace Ogle
                 if (string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
                 {
                     date ??= DateTime.Today.AddDays(-1);
-                }                                
+                }
+                if (string.IsNullOrWhiteSpace(filePattern))
+                {
+                    filePattern = null;
+                }
 
                 string result;
                 var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
@@ -196,7 +209,7 @@ namespace Ogle
                 {
                     dynamic logService = LogServiceFactory.CreateInstance(_settings);
 
-                    result = await (Task<string>)logService.GetLogContent(id, date.HasValue ? DateOnly.FromDateTime(date.Value) : (DateOnly?)null);
+                    result = await (Task<string>)logService.GetLogContent(id, filePattern, date.HasValue ? DateOnly.FromDateTime(date.Value) : (DateOnly?)null);
 
                     if (string.IsNullOrEmpty(result))
                     {
@@ -220,7 +233,7 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/GetLogsFromAllServers")]
-        public async Task<IActionResult> GetLogsFromAllServers(DateTime? date, string? hostname, string id, bool? highlight = true)
+        public async Task<IActionResult> GetLogsFromAllServers(DateTime? date, string? hostname, string id, string? filePattern = null, bool? highlight = true)
         {
             try
             {
@@ -242,7 +255,7 @@ namespace Ogle
                 }
                 else
                 {
-                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetLogs?date={date?.ToString("yyyy-MM-dd")}&id={HttpUtility.UrlEncode(id)}&highlight={highlight}";
+                    var endpoint = $"/{ControllerContext.GetRoutePrefix()}/GetLogs?date={date?.ToString("yyyy-MM-dd")}&id={HttpUtility.UrlEncode(id)}&filePattern={filePattern}&highlight={highlight}";
                     var responses = await CollateJsonResponsesFromServers<string>(hostname, endpoint);
 
                     if (responses.All(i => !i.Value.StatusCode.IsSuccessCode()))

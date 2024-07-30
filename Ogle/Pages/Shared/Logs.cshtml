@@ -42,7 +42,7 @@
     form {
         display: grid;
         width: 100%;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto 4fr 1fr auto;
         grid-gap: 5px;
     }
 
@@ -183,6 +183,7 @@
                 </select>
             </div>
             <input type="text" id="id" title="RequestId or a search term" placeholder="RequestId or a search term" value="@(Model.Id)" />
+            <input type="text" id="filePattern" title="Filename pattern (optional)" placeholder="Filename pattern" value="@(Model.FilePattern)" />
             <div>
                 <input type="submit" id="showButton" value="Fetch request logs" onclick="redirect(); return false;" />
                 <input type="submit" id="browseButton" value="Browse application logs" onclick="getLogFileList(); return false;" />
@@ -238,6 +239,7 @@
     function redirect() {
         var url = "/@(Model.RoutePrefix)/Logs";
         var requestId = $('#id').val().trim();
+        var filePattern = $('#filePattern').val().trim();
         var date = $('#date').val();
         var hostname = $('#hostname').val();
 
@@ -247,7 +249,9 @@
             if (date) {
                 url = url + "&date=" + date;
             }
-
+            if (filePattern) {
+                url = url + "&filePattern=" + encodeURIComponent(filePattern);
+            }
             if (hostname) {
                 url = url + "&hostname=" + hostname;
             }
@@ -279,7 +283,7 @@
         $('#loader').show();
 
         var requests = [];
-        requests.push(updateDataForServer('/' + routePrefix + '/GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + encodeURIComponent($('#id').val()) + '&highlight=' + @(Model.Highlight.ToString().LowerCaseFirstCharacter()) + '&rand=' + getRandomInt(1000)));
+        requests.push(updateDataForServer('/' + routePrefix + '/GetLogsFromAllServers?date=' + $('#date').val() + '&hostname=' + $('#hostname').val() + '&id=' + encodeURIComponent($('#id').val()) + '&filePattern=' + encodeURIComponent($('#filePattern').val().trim()) + '&highlight=' + @(Model.Highlight.ToString().LowerCaseFirstCharacter()) + '&rand=' + getRandomInt(1000)));
 
         $.when.apply($, requests).done(function () {
             $('#loader').hide();
@@ -299,7 +303,7 @@
         $('#loader').show();
 
         var requests = [];
-        requests.push(updateDataForServer('/' + routePrefix + '/BrowseLogFiles?date=' + $("#date").val() + '&hostname=' + $('#hostname').val() + '&rand=' + getRandomInt(1000)));
+        requests.push(updateDataForServer('/' + routePrefix + '/BrowseLogFiles?date=' + $("#date").val() + '&filePattern=' + $('#filePattern').val().trim() + '&hostname=' + $('#hostname').val() + '&rand=' + getRandomInt(1000)));
 
         $.when.apply($, requests).done(function () {
             $('#loader').hide();

@@ -7,9 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using Lucene.Net.Analysis;
-using Lucene.Net.Analysis.Core;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
 using Lucene.Net.QueryParsers.Classic;
@@ -250,7 +248,7 @@ namespace Ogle
             return rowsSaved;
         }
 
-        public async Task<string> GetLogContent(string searchTerm, DateOnly? date)
+        public async Task<string> GetLogContent(string searchTerm, string? filePattern, DateOnly? date)
         {
             var props = typeof(TRecord).GetProperties();
             var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
@@ -277,7 +275,7 @@ namespace Ogle
 
             if (!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
             {
-                var indexSearchResult = IndexSearchLogContent(EscapeLuceneSpecialChars(searchTerm), date);
+                var indexSearchResult = IndexSearchLogContent(EscapeLuceneSpecialChars(searchTerm), filePattern, date);
 
                 if (!string.IsNullOrEmpty(indexSearchResult))
                 {
@@ -293,7 +291,7 @@ namespace Ogle
                 throw new ArgumentNullException(nameof(date));
             }
 
-            foreach (var readLineContext in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, ++firstLine))
+            foreach (var readLineContext in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, ++firstLine, UnescapeLuceneSpecialChars(filePattern)))
             {
                 var logLine = readLineContext.Line;
                 var filename = Path.GetFileName(readLineContext.Filename);
@@ -505,11 +503,12 @@ namespace Ogle
 
             using (var writer = new IndexWriter(FSDirectory.Open(indexPath), indexConfig))
             {
-                foreach(var item in grouppedLogLines)
+                foreach(var (filename, content) in grouppedLogLines)
                 {
                     var doc = new Document
                     {
-                        new TextField("_raw", item, Field.Store.YES)
+                        new StringField("file", filename, Field.Store.YES),
+                        new TextField("_raw", content, Field.Store.YES)
                     };
                     writer.AddDocument(doc);
                 }
@@ -549,9 +548,9 @@ namespace Ogle
             File.WriteAllText(bookmarkPath, $"{file}\n{line}");
         }
 
-        private Dictionary<string, string> GetLogContentPerKey(DateOnly date, ref string? lastFile, ref int lastLine)
+        private Dictionary<string, (string, string)> GetLogContentPerKey(DateOnly date, ref string? lastFile, ref int lastLine)
         {
-            var contentPerKey = new Dictionary<string, StringBuilder>();
+            var contentPerKey = new Dictionary<string, (string, StringBuilder)>();
             var props = typeof(TRecord).GetProperties();
             var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
                                                     .SingleOrDefault(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
@@ -602,13 +601,13 @@ namespace Ogle
 
                 if (!contentPerKey.ContainsKey(id))
                 {
-                    contentPerKey.Add(id, new StringBuilder());
+                    contentPerKey.Add(id, (readLineContext.Filename, new StringBuilder()));
                 }
-                contentPerKey[id].AppendLine(logLine);
+                contentPerKey[id].Item2.AppendLine(logLine);
                 previousId = id;
             }
 
-            return contentPerKey.ToDictionary(k => k.Key, v => v.Value.ToString());
+            return contentPerKey.ToDictionary(k => k.Key, v => (v.Value.Item1, v.Value.Item2.ToString()));
         }
 
         public string HighlightLogContent(string content, string searchTerm)
@@ -692,19 +691,26 @@ namespace Ogle
             return line;
         }
 
-        public IEnumerable<string> GetLogFilenames(DateOnly? date)
+        public IEnumerable<string> GetLogFilenames(DateOnly? date, string? filePattern = null)
         {
             IEnumerable<string> logFiles;
+
+            filePattern ??= string.Format(_settings.CurrentValue.LogFilePattern, date);
 
             if (_settings.CurrentValue.LogFilePattern.Contains("{0"))
             {
                 logFiles = Directory.EnumerateFiles(_settings.CurrentValue.LogFolder,
-                                                    string.Format(_settings.CurrentValue.LogFilePattern, date),
-                                                    _settings.CurrentValue.RecursiveLogFileEnumeration ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+                                                    filePattern,
+                                                    _settings.CurrentValue.RecursiveLogFileEnumeration
+                                                    ? SearchOption.AllDirectories
+                                                    : SearchOption.TopDirectoryOnly);
             }
             else
             {
-                logFiles = new DirectoryInfo(_settings.CurrentValue.LogFolder).EnumerateFiles("*.*", _settings.CurrentValue.RecursiveLogFileEnumeration ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
+                logFiles = new DirectoryInfo(_settings.CurrentValue.LogFolder).EnumerateFiles(filePattern,
+                                                                                              _settings.CurrentValue.RecursiveLogFileEnumeration
+                                                                                              ? SearchOption.AllDirectories
+                                                                                              : SearchOption.TopDirectoryOnly)
                                                                               .Where(i => !date.HasValue ||
                                                                                           (i.LastWriteTime >= date.Value.ToDateTime(TimeOnly.MinValue) &&
                                                                                            i.LastWriteTime < date.Value.ToDateTime(TimeOnly.MinValue).AddDays(1)))
@@ -716,12 +722,12 @@ namespace Ogle
                            .ThenBy(path => Path.GetExtension(path));
         }
 
-        public IEnumerable<ReadLineContext> ReadLogs(DateOnly date, string? firstFile = null, int firstLine = 1)
+        public IEnumerable<ReadLineContext> ReadLogs(DateOnly date, string? firstFile = null, int firstLine = 1, string? filePattern = null)
         {
             var isFirstFile = true;
             var firstFilenameWithoutExtension = Path.GetFileNameWithoutExtension(firstFile);
 
-            foreach (var file in GetLogFilenames(date))
+            foreach (var file in GetLogFilenames(date, filePattern))
             {
                 var filenameWithoutExtension = Path.GetFileNameWithoutExtension(file);
 
@@ -955,7 +961,7 @@ namespace Ogle
             return Path.Combine(_settings.CurrentValue.LogIndexFolder, date.ToString("yyyyMMdd"));
         }
 
-        private string? IndexSearchLogContent(string searchTerm, DateOnly? date)
+        private string? IndexSearchLogContent(string searchTerm, string? file, DateOnly? date)
         {
             var availableIndices = date.HasValue ? new[] { DateToIndexPath(date.Value) } : Directory.GetDirectories(_settings.CurrentValue.LogIndexFolder);
             var result = new List<string>();
@@ -973,7 +979,8 @@ namespace Ogle
                     var searcher = new IndexSearcher(reader);
                     var analyzer = GetAnalyzer();
                     var parser = new QueryParser(_luceneVersion, "_raw", analyzer);
-                    var query = parser.Parse(searchTerm);
+                    var lucene = string.IsNullOrWhiteSpace(file) ? searchTerm : $"_raw:{searchTerm} AND file:{EscapeLuceneSpecialChars(file)}";
+                    var query = parser.Parse(lucene);
                     var topDocs = searcher.Search(query, _settings.CurrentValue.MaxFulltextResults);
 
                     result.AddRange(topDocs.ScoreDocs.Select(i => searcher.Doc(i.Doc).Get("_raw")));
@@ -985,7 +992,8 @@ namespace Ogle
 
         private static string EscapeLuceneSpecialChars(string input)
         {
-            return input.Replace("+", "\\+")
+            return input.Replace("\\", "\\\\")
+                        .Replace("+", "\\+")
                         .Replace("-", "\\-")
                         .Replace("&&", "\\&&")
                         .Replace("||", "\\||")
@@ -1002,8 +1010,30 @@ namespace Ogle
                         .Replace("*", "\\*")
                         .Replace("?", "\\?")
                         .Replace(":", "\\:")
-                        .Replace("\\", "\\\\")
                         .Replace("/", "\\/");
+        }
+
+        private static string UnescapeLuceneSpecialChars(string input)
+        {
+            return input.Replace("\\\\", "\\")
+                        .Replace("\\+", "+")
+                        .Replace("\\-", "-")
+                        .Replace("\\&&", "&&")
+                        .Replace("\\||", "||")
+                        .Replace("\\!", "!")
+                        .Replace("\\(", "(")
+                        .Replace("\\)", ")")
+                        .Replace("\\{", "{")
+                        .Replace("\\}", "}")
+                        .Replace("\\[", "[")
+                        .Replace("\\]", "]")
+                        .Replace("\\^", "^")
+                        .Replace("\\\"", "\"")
+                        .Replace("\\~", "~")
+                        .Replace("\\*", "*")
+                        .Replace("\\?", "?")
+                        .Replace("\\:", ":")
+                        .Replace("\\/", "/");
         }
 
         //private IEnumerable<string> Tokenize(string text)
