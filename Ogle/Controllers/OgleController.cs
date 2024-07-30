@@ -176,19 +176,19 @@ namespace Ogle
         {
             try
             {
-                if (string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
-                {
-                    date ??= DateTime.Today.AddDays(-1);
-                }
-
-                var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
-                string result;
-
                 if (id == null)
                 {
                     return BadRequest("Please specify a request id or a unique search term");
                 }
-                else if (!searchPatternMatch.Success)
+                if (string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
+                {
+                    date ??= DateTime.Today.AddDays(-1);
+                }                                
+
+                string result;
+                var searchPatternMatch = new Regex(_settings.CurrentValue.AllowedSearchPattern).Match(id);
+
+                if (!searchPatternMatch.Success)
                 {
                     return BadRequest($"Search term has to match {_settings.CurrentValue.AllowedSearchPattern} regular expresion pattern");
                 }
@@ -213,7 +213,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 

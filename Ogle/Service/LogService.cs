@@ -50,7 +50,9 @@ namespace Ogle
             var dict = new Dictionary<string, TRecord>();
             var props = typeof(TRecord).GetProperties();
             var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
-                                                    .Single(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+                                                    .SingleOrDefault(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+            var filenameAttribute = typeof(TRecord).GetCustomAttributes(true)
+                                                    .SingleOrDefault(i => i is FilenamePatternAttribute) as FilenamePatternAttribute;
             var mandatoryProps = props.Where(i => i.GetCustomAttributes(true).Any(j => j is MandatoryAttribute))
                                       .ToArray();
             var mandatoryPatterns = mandatoryProps.ToDictionary(k => k,
@@ -76,21 +78,29 @@ namespace Ogle
             var lineNumber = 0;
             string? generatedId = null;            
 
-            foreach (var line in ReadLogs(options.Date.Value).Select(i => i.Line))
+            foreach (var readLineContext in ReadLogs(options.Date.Value))
             {
+                var line = readLineContext.Line;
                 var recordCreated = false;
                 var patternFound = false;
-                var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
+                var mandatoryMatch = mandatoryAttribute?.Regex?.Match(line);
+                var filenameMatch = filenameAttribute?.Regex?.Match(readLineContext.Filename);
 
                 lineNumber++;
-                if (!mandatoryMatch.Success)
+                if (mandatoryMatch != null &&!mandatoryMatch.Success)
+                {
+                    continue;
+                }
+                if (filenameMatch != null && !filenameMatch.Success)
                 {
                     continue;
                 }
 
                 TRecord record;
 
-                var id = mandatoryMatch.Groups[keyAttribute.MatchGroup].Value;
+                var id = keyAttribute.RegexSource == RegexSource.LogPattern
+                         ? mandatoryMatch.Groups[keyAttribute.MatchGroup].Value
+                         : filenameMatch.Groups[keyAttribute.MatchGroup].Value;
 
                 //some events like application restarts do not have a request id
                 //therefore we need to generate one on the fly to be able to aggregate them
@@ -113,7 +123,8 @@ namespace Ogle
 
                     foreach (var patternInfo in mandatoryPatterns.Where(i => i.Key.Name != keyProp.Name))
                     {
-                        var value = ParseValue(patternInfo.Key.PropertyType, mandatoryMatch.Groups[patternInfo.Value.MatchGroup].Value, options.Date.Value, patternInfo.Value.Format);
+                        var match = keyAttribute.RegexSource == RegexSource.LogPattern ? mandatoryMatch : filenameMatch;
+                        var value = ParseValue(patternInfo.Key.PropertyType, match.Groups[patternInfo.Value.MatchGroup].Value, options.Date.Value, patternInfo.Value.Format);
 
                         if (timeBucketProp.Name == patternInfo.Key.Name)
                         {
@@ -158,20 +169,28 @@ namespace Ogle
                         continue;
                     }
 
-                    var maxLength = maxLengths.ContainsKey(patternInfo.Key) ? maxLengths[patternInfo.Key].Length : -1;
-                    object? value = ParseValue(patternInfo.Key.PropertyType, match.Groups[patternInfo.Value.MatchGroup].Value, options.Date.Value, patternInfo.Value.Format);
-
-                    if (oldValue != value)
+                    try
                     {
-                        if (maxLength >= 0)
+                        var maxLength = maxLengths.ContainsKey(patternInfo.Key) ? maxLengths[patternInfo.Key].Length : -1;
+                        object? value = ParseValue(patternInfo.Key.PropertyType, match.Groups[patternInfo.Value.MatchGroup].Value, options.Date.Value, patternInfo.Value.Format);
+
+                        if (oldValue != value)
                         {
-                            if (value?.GetType() == typeof(string))
+                            if (maxLength >= 0)
                             {
-                                value = (value as string).Truncate(maxLength);
+                                if (value?.GetType() == typeof(string))
+                                {
+                                    value = (value as string).Truncate(maxLength);
+                                }
                             }
+                            patternInfo.Key.SetValue(record, value);
+                            patternFound = true;
                         }
-                        patternInfo.Key.SetValue(record, value);
-                        patternFound = true;
+                    }
+                    catch(Exception ex)
+                    {
+                        //if a parse error occurs then a pattern has not been found - move on to the next pattern
+                        continue;
                     }
                 }
                 if (generatedId != null && recordCreated && !patternFound)
@@ -235,7 +254,9 @@ namespace Ogle
         {
             var props = typeof(TRecord).GetProperties();
             var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
-                                                    .Single(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+                                                    .SingleOrDefault(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+            var filenameAttribute = typeof(TRecord).GetCustomAttributes(true)
+                                                   .SingleOrDefault(i => i is FilenamePatternAttribute) as FilenamePatternAttribute;
             var mandatoryProps = props.Where(i => i.GetCustomAttributes(true).Any(j => j is MandatoryAttribute))
                                       .ToArray();
             var mandatoryPatterns = mandatoryProps.ToDictionary(k => k,
@@ -272,11 +293,17 @@ namespace Ogle
                 throw new ArgumentNullException(nameof(date));
             }
 
-            foreach (var logLine in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, ++firstLine).Select(i => i.Line))
+            foreach (var readLineContext in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, ++firstLine))
             {
+                var logLine = readLineContext.Line;
+                var filename = Path.GetFileName(readLineContext.Filename);
+
                 if (logLine.Contains(searchTerm))
                 {
-                    var match = mandatoryAttribute.Regex.Match(logLine);
+                    //log line contains search term, include all lines with the same key
+                    var match = keyAttribute.RegexSource == RegexSource.LogPattern
+                                ? mandatoryAttribute.Regex.Match(logLine)
+                                : filenameAttribute.Regex.Match(filename);
 
                     if (match.Success)
                     {
@@ -319,49 +346,64 @@ namespace Ogle
                     }
                     else
                     {
-                        //search term found on a line that does not match the mandatory pattern (typically exceptions)
-                        //go back and find all matching lines from our back buffer
-                        if (backBuffer.Any() && !previousLineMatched)
+                        if (keyAttribute.RegexSource == RegexSource.FilenamePattern)
                         {
-                            for (var element = backBuffer.Last; element != null; element = element.Previous)
+                            match = filenameAttribute.Regex.Match(filename);
+
+                            if (match.Success)
                             {
-                                var backBufferLine = element.Value;
-
-                                match = mandatoryAttribute.Regex.Match(backBufferLine);
-
-                                if (match.Success)
+                                if (!string.IsNullOrEmpty(match.Groups[keyAttribute.MatchGroup].Value))
                                 {
-                                    if (!string.IsNullOrEmpty(match.Groups[keyAttribute.MatchGroup].Value))
-                                    {
-                                        keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
-                                    }
-                                    else
-                                    {
-                                        sb.AppendLine(backBufferLine);
-                                        previousLineMatched = true;
-                                        break;
-                                    }
+                                    keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            //search term found on a line that does not match the mandatory pattern (typically exceptions)
+                            //go back and find all matching lines from our back buffer
+                            if (backBuffer.Any() && !previousLineMatched)
+                            {
+                                for (var element = backBuffer.Last; element != null; element = element.Previous)
+                                {
+                                    var backBufferLine = element.Value;
 
-                                    for (element = backBuffer.First; element != null;)
+                                    match = mandatoryAttribute.Regex.Match(backBufferLine);
+
+                                    if (match.Success)
                                     {
-                                        backBufferLine = element.Value;
-                                        if (keys.Any(key => backBufferLine.Contains(key)))
+                                        if (!string.IsNullOrEmpty(match.Groups[keyAttribute.MatchGroup].Value))
                                         {
-                                            var next = element.Next;
-
-                                            //remove the matching line from our back buffer
-                                            backBuffer.Remove(element);
-                                            element = next;
-
-                                            sb.AppendLine(backBufferLine);
+                                            keys.Add(match.Groups[keyAttribute.MatchGroup].Value);
                                         }
                                         else
                                         {
-                                            element = element.Next;
+                                            sb.AppendLine(backBufferLine);
+                                            previousLineMatched = true;
+                                            break;
                                         }
+
+                                        for (element = backBuffer.First; element != null;)
+                                        {
+                                            backBufferLine = element.Value;
+                                            if (keys.Any(key => backBufferLine.Contains(key)))
+                                            {
+                                                var next = element.Next;
+
+                                                //remove the matching line from our back buffer
+                                                backBuffer.Remove(element);
+                                                element = next;
+
+                                                sb.AppendLine(backBufferLine);
+                                            }
+                                            else
+                                            {
+                                                element = element.Next;
+                                            }
+                                        }
+                                        previousLineMatched = true;
+                                        break;
                                     }
-                                    previousLineMatched = true;
-                                    break;
                                 }
                             }
                         }
@@ -374,7 +416,7 @@ namespace Ogle
                 }
                 backBuffer.AddLast(logLine);
 
-                if (keys.Any(key => logLine.Contains(key)))
+                if (keys.Any(key => logLine.Contains(key) || filename.Contains(key)))
                 {
                     sb.AppendLine(logLine);
                     previousLineMatched = true;
@@ -512,7 +554,9 @@ namespace Ogle
             var contentPerKey = new Dictionary<string, StringBuilder>();
             var props = typeof(TRecord).GetProperties();
             var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
-                                                    .Single(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+                                                    .SingleOrDefault(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+            var filenameAttribute = typeof(TRecord).GetCustomAttributes(true)
+                                                   .SingleOrDefault(i => i is FilenamePatternAttribute) as FilenamePatternAttribute;
             var mandatoryProps = props.Where(i => i.GetCustomAttributes(true).Any(j => j is MandatoryAttribute))
                                       .ToArray();
             var mandatoryPatterns = mandatoryProps.ToDictionary(k => k,
@@ -527,13 +571,16 @@ namespace Ogle
             var firstFile = lastFile;
             var firstLine = lastLine + 1;
 
-            foreach(var lineContext in ReadLogs(date, firstFile, firstLine))
+            foreach(var readLineContext in ReadLogs(date, firstFile, firstLine))
             {
-                var mandatoryMatch = mandatoryAttribute.Regex.Match(lineContext.Line);
-                var id = mandatoryMatch.Success ? mandatoryMatch.Groups[keyAttribute.MatchGroup].Value : previousId;
+                var logLine = readLineContext.Line;
+                var match = keyAttribute.RegexSource == RegexSource.LogPattern
+                            ? mandatoryAttribute.Regex.Match(logLine)
+                            : filenameAttribute.Regex.Match(readLineContext.Filename);
+                var id = match.Success ? match.Groups[keyAttribute.MatchGroup].Value : previousId;
 
-                lastFile = lineContext.Filename;
-                lastLine = lineContext.LineNumber;
+                lastFile = readLineContext.Filename;
+                lastLine = readLineContext.LineNumber;
 
                 //some events like application restarts do not have a request id
                 //therefore we need to generate one on the fly to be able to aggregate them
@@ -557,7 +604,7 @@ namespace Ogle
                 {
                     contentPerKey.Add(id, new StringBuilder());
                 }
-                contentPerKey[id].AppendLine(lineContext.Line);
+                contentPerKey[id].AppendLine(logLine);
                 previousId = id;
             }
 
@@ -568,7 +615,7 @@ namespace Ogle
         {
             var props = typeof(TRecord).GetProperties();
             var mandatoryAttribute = typeof(TRecord).GetCustomAttributes(true)
-                                                    .Single(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
+                                                    .SingleOrDefault(i => i is MandatoryLogPatternAttribute) as MandatoryLogPatternAttribute;
             var patterns = props.Where(i => i.GetCustomAttributes(true)
                                              .Any(j => j is LogPatternAttribute))
                                 .Select(i => i.GetCustomAttributes(true)
@@ -578,9 +625,9 @@ namespace Ogle
             foreach (var line in content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 var highlightedLine = line;
-                var mandatoryMatch = mandatoryAttribute.Regex.Match(line);
+                var mandatoryMatch = mandatoryAttribute?.Regex?.Match(line);
 
-                if (mandatoryMatch.Success)
+                if (mandatoryMatch != null && mandatoryMatch.Success)
                 {
                     highlightedLine = HighlightMatch(highlightedLine, mandatoryMatch, "mandatory patternMatch");
 
@@ -647,13 +694,26 @@ namespace Ogle
 
         public IEnumerable<string> GetLogFilenames(DateOnly? date)
         {
-            var logFiles = Directory.GetFiles(_settings.CurrentValue.LogFolder,
-                                              string.Format(_settings.CurrentValue.LogFilePattern, date))
-                                    .OrderBy(path => Path.GetDirectoryName(path))
-                                    .ThenBy(path => Path.GetFileNameWithoutExtension(path))
-                                    .ThenBy(path => Path.GetExtension(path));
+            IEnumerable<string> logFiles;
 
-            return logFiles;
+            if (_settings.CurrentValue.LogFilePattern.Contains("{0"))
+            {
+                logFiles = Directory.EnumerateFiles(_settings.CurrentValue.LogFolder,
+                                                    string.Format(_settings.CurrentValue.LogFilePattern, date),
+                                                    _settings.CurrentValue.RecursiveLogFileEnumeration ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+            }
+            else
+            {
+                logFiles = new DirectoryInfo(_settings.CurrentValue.LogFolder).EnumerateFiles("*.*", _settings.CurrentValue.RecursiveLogFileEnumeration ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
+                                                                              .Where(i => !date.HasValue ||
+                                                                                          (i.LastWriteTime >= date.Value.ToDateTime(TimeOnly.MinValue) &&
+                                                                                           i.LastWriteTime < date.Value.ToDateTime(TimeOnly.MinValue).AddDays(1)))
+                                                                              .Select(i => i.FullName);
+            }
+
+            return logFiles.OrderBy(path => Path.GetDirectoryName(path))
+                           .ThenBy(path => Path.GetFileNameWithoutExtension(path))
+                           .ThenBy(path => Path.GetExtension(path));
         }
 
         public IEnumerable<ReadLineContext> ReadLogs(DateOnly date, string? firstFile = null, int firstLine = 1)
@@ -678,7 +738,7 @@ namespace Ogle
                     lineNumber++;
 
                     if (isFirstFile &&
-                        lineNumber <= firstLine)
+                        lineNumber < firstLine)
                     {
                         continue;
                     }

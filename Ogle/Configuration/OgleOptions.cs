@@ -7,6 +7,7 @@ namespace Ogle
     public class OgleOptions
     {
         public string LogFolder { get; set; }
+        public bool RecursiveLogFileEnumeration { get; set; }
         public string LogFilePattern { get; set; }
         public string LogIndexFolder { get; set; }
         public string AllowedSearchPattern { get; set; }
