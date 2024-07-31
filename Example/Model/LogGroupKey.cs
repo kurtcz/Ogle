@@ -5,8 +5,12 @@ using Ogle;
 namespace Example.Model
 {
     [MandatoryLogPattern(@"^\[(\d{2}\:\d{2}\:\d{2})\ [A-Z]{3}\]\ ([^;]*);\ ReqId\=([^;]+);")]
+    [FilenamePattern(@"([a-zA-Z]+).*")]
     public class LogGroupKey
     {
+        [Mandatory(1, RegexSource.FilenamePattern)]
+        public string Application { get; set; }
+
         [Mandatory(2)]
         [DisplayName("Server")]
         public string ServerName { get; set; }

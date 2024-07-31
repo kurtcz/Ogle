@@ -35,6 +35,7 @@ namespace Example
                         UserName = g.Key.UserName,
                         Endpoint = g.Key.Endpoint,
                         Timestamp = g.Key.Timestamp,
+                        Application = g.Key.Application,
                         TotalRequests = g.Count(),
                         SuccessfulRequests = g.Count(j => j.Succeeded),
                         MaxRequestsInFlight = g.Max(j => j.RequestsInFlight),

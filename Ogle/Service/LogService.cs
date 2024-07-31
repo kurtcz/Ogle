@@ -82,7 +82,7 @@ namespace Ogle
                 var recordCreated = false;
                 var patternFound = false;
                 var mandatoryMatch = mandatoryAttribute?.Regex?.Match(line);
-                var filenameMatch = filenameAttribute?.Regex?.Match(readLineContext.Filename);
+                var filenameMatch = filenameAttribute?.Regex?.Match(Path.GetFileName(readLineContext.Filename));
 
                 lineNumber++;
                 if (mandatoryMatch != null &&!mandatoryMatch.Success)
@@ -121,7 +121,7 @@ namespace Ogle
 
                     foreach (var patternInfo in mandatoryPatterns.Where(i => i.Key.Name != keyProp.Name))
                     {
-                        var match = keyAttribute.RegexSource == RegexSource.LogPattern ? mandatoryMatch : filenameMatch;
+                        var match = patternInfo.Value.RegexSource == RegexSource.LogPattern ? mandatoryMatch : filenameMatch;
                         var value = ParseValue(patternInfo.Key.PropertyType, match.Groups[patternInfo.Value.MatchGroup].Value, options.Date.Value, patternInfo.Value.Format);
 
                         if (timeBucketProp.Name == patternInfo.Key.Name)
@@ -979,7 +979,7 @@ namespace Ogle
                     var searcher = new IndexSearcher(reader);
                     var analyzer = GetAnalyzer();
                     var parser = new QueryParser(_luceneVersion, "_raw", analyzer);
-                    var lucene = string.IsNullOrWhiteSpace(file) ? searchTerm : $"_raw:{searchTerm} AND file:{EscapeLuceneSpecialChars(file)}";
+                    var lucene = string.IsNullOrWhiteSpace(file) ? searchTerm : $"_raw:{searchTerm} AND file:{file}";
                     var query = parser.Parse(lucene);
                     var topDocs = searcher.Search(query, _settings.CurrentValue.MaxFulltextResults);
 
@@ -992,6 +992,11 @@ namespace Ogle
 
         private static string EscapeLuceneSpecialChars(string input)
         {
+            if (input == null)
+            {
+                return null;
+            }
+
             return input.Replace("\\", "\\\\")
                         .Replace("+", "\\+")
                         .Replace("-", "\\-")
@@ -1015,6 +1020,11 @@ namespace Ogle
 
         private static string UnescapeLuceneSpecialChars(string input)
         {
+            if (input == null)
+            {
+                return null;
+            }
+
             return input.Replace("\\\\", "\\")
                         .Replace("\\+", "+")
                         .Replace("\\-", "-")

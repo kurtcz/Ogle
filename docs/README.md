@@ -31,7 +31,9 @@ Ogle is suitable for applications written in .NET 6
 "Ogle": {
     "LogFolder": "logs",    //set path to the log folder
     "LogFilePattern": "Sample-{0:yyyyMMdd}.log",    //set log file name pattern
+    "RecursiveLogFileEnumeration": true, //set to also scan LogFolder subfolders as well as the base folder
     "LogIndexFolder": "logs/index", //optionally set path to the full-text index folder
+    "UseResponseCompression": true, //if set then response from a call to DownloadLog endpoint will be compressed
     "Layout": "_Layout",    //optionally make Ogle pages use your website's layout cshtml file
     "AllowedSearchPattern": "\\S{5,}",  //regex pattern used for validation of the search term
     "MinFulltextTokenLength": 6,    //minimal length of full-text tokens that gets indexed (optional, default=5)

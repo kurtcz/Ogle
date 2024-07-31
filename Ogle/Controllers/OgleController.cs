@@ -308,12 +308,14 @@ namespace Ogle
 
         [HttpGet]
         [Route("/ogle/DownloadLog")]
+        [CompressResponse]
         public IActionResult DownloadLog(string log)
         {
             try
             {
                 dynamic logService = LogServiceFactory.CreateInstance(_settings);
-                var stream = logService.GetFileStreamWithoutLocking(log);
+                var path = (logService.GetLogFilenames(null, log) as IEnumerable<string>).First();
+                var stream = logService.GetFileStreamWithoutLocking(path);
 
                 //asp.net core will take care of disposing the stream
                 return File(stream, "text/plain", log);
