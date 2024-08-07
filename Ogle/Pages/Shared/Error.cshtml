@@ -3,7 +3,6 @@
 @model ErrorViewModel;
 @{
     Layout = Model.Layout ?? "_OgleLayout";
-    ViewBag.Title = "Invalid Ogle Configuration";
 
     var message = string.Join("\n", Model.ErrorMessages.Select(i => $"<li>{i}</li>"));
 
@@ -12,10 +11,9 @@
 <link rel="stylesheet" href="~/_content/Ogle/css/site.css" />
 <style>
     #errorContainer {
-        margin-top: 20px;
-        background-color: #ffdddd;
-        color: red;
-        border: 2px solid red;
+        position: relative;
+        display: inline-block;
+        margin-top: 10px;
     }
 
     .errorMessage {
@@ -29,7 +27,7 @@
     <img id="logo" src="~/_content/Ogle/images/ogle.svg" />
 </picture>
 
-<h4>@(ViewBag.Title)</h4>
+<h4>@(Model.Title ?? "Ogle Error")</h4>
 
 <div id="errorContainer">
     <div class="errorMessage">@Html.Raw(message)</div>

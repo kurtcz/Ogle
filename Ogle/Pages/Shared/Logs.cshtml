@@ -228,6 +228,19 @@
                     $('#msg').html(result);
                     $('#msg').show();
                 }
+            },
+            error: function (request, status, msg) {
+                var message = request.responseText || "(null)";
+
+                if (request.responseJSON && request.responseJSON.detail) {
+                    message = request.responseJSON.detail;
+                }
+                message = $('#errorContainer .errorMessage').text(message).html();
+                message = message.replaceAll("\n", "\n<br />\n");
+
+                $('#errorContainer .errorMessage').html('Error ' + request.status + ' received from ' + url + '\n<br />\n' + message);
+                $('#errorContainer').show();
+                $('#loader').hide();
             }
         });
     }
@@ -315,38 +328,23 @@
         @Html.Raw("\t\t\tgetLogs();\n");
     }
 
-    $.fn.extend({
-        setColorBasedOnValue: function () {
-            return this.each(function () {
-                var value = $(this).val();
-
-                if (value == '') {
-                    $(this).css('color', 'gray');
-                } else {
-                    $(this).css('color', 'black');
-                }
-            });
-        }
-    });
-
     $(document).ready(function () {
+        $.fn.extend({
+            setColorBasedOnValue: function () {
+                return this.each(function () {
+                    var value = $(this).val();
+
+                    if (value == '') {
+                        $(this).css('color', 'gray');
+                    } else {
+                        $(this).css('color', 'black');
+                    }
+                });
+            }
+        });
         $('select,#date').setColorBasedOnValue();
         $('select,#date').change(function () {
             $(this).setColorBasedOnValue();
         });
-    });
-
-    $(document).on('ajaxError', function (event, request, ajaxSettings, errorMessage) {
-        var message = request.responseText || "(null)";
-
-        if (request.responseJSON && request.responseJSON.detail) {
-            message = request.responseJSON.detail;
-        }
-        message = $('#errorContainer .errorMessage').text(message).html();
-        message = message.replaceAll("\n", "\n<br />\n");
-
-        $('#errorContainer .errorMessage').html('Error ' + request.status + ' received from ' + ajaxSettings.url + '\n<br />\n' + message);
-        $('#errorContainer').show();
-        $('#loader').hide();
     });
 </script>

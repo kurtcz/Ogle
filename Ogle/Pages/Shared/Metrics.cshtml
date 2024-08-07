@@ -656,6 +656,19 @@
             url: url,
             xhrFields: {
                 withCredentials: true
+            },
+            error: function (request, status, msg) {
+                var message = request.responseText || "(null)";
+
+                if (request.responseJSON && request.responseJSON.detail) {
+                    message = request.responseJSON.detail;
+                }
+                message = $('#errorContainer .errorMessage').text(message).html();
+                message = message.replaceAll("\n", "\n<br />\n");
+
+                $('#errorContainer .errorMessage').html('Error ' + request.status + ' received from ' + url + '\n<br />\n' + message);
+                $('#errorContainer').show();
+                $('#loader').hide();
             }
         }).done(function (result) {
             if (result.length == 0) {

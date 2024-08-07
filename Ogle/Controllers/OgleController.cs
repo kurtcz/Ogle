@@ -60,6 +60,7 @@ namespace Ogle
                     return View("Error", new ErrorViewModel
                     {
                         Layout = _settings.CurrentValue.Layout,
+                        Title = "Invalid Ogle Configuration",
                         ErrorMessages = errorMessages.ToArray()
                     });
                 }
@@ -90,7 +91,13 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return View("Error", new ErrorViewModel
+                {
+                    Layout = _settings.CurrentValue.Layout,
+                    Title = "Ogle Error",
+                    ErrorMessages = new[] { $"{ex.Message}\n{ex.StackTrace}".Replace("\n", "\n<br />\n") }
+                });
             }
         }
 
@@ -175,7 +182,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -302,7 +310,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -323,7 +332,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -349,13 +359,14 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
         [HttpGet]
         [Route("/ogle/Metrics")]
-        public IActionResult Metrics(DateTime? date, LogReaderOptions options, bool autoFetchData, bool canDrillDown = true)
+        public IActionResult Metrics(DateTime? date, LogReaderOptions options, bool autoFetchData, bool canDrillDown = true)    
         {
             try
             {
@@ -366,6 +377,7 @@ namespace Ogle
                     return View("Error", new ErrorViewModel
                     {
                         Layout = _settings.CurrentValue.Layout,
+                        Title = "Invalid Ogle Configuration",
                         ErrorMessages = errorMessages.ToArray()
                     });
                 }
@@ -450,7 +462,13 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return View("Error", new ErrorViewModel
+                {
+                    Layout = _settings.CurrentValue.Layout,
+                    Title = "Ogle Error",
+                    ErrorMessages = new[] { $"{ex.Message}\n{ex.StackTrace}".Replace("\n", "\n<br />\n") }
+                });
             }
         }
 
@@ -475,7 +493,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -525,7 +544,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -598,7 +618,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -622,7 +643,8 @@ namespace Ogle
             catch(Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -650,7 +672,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -675,7 +698,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
@@ -705,7 +729,8 @@ namespace Ogle
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                throw;
+
+                return Problem(ex.Message);
             }
         }
 
