@@ -85,7 +85,7 @@ builder.Services.AddOgle(builder.Configuration.GetSection("Ogle"), options =>
             MaxRequestsInFlight = g.Max(j => j.RequestsInFlight)
             //etc.
         };
-    );    
+    );
 });
 builder.Services.AddControllers(options =>
 {
@@ -117,7 +117,7 @@ Call to fetch metrics for a given day will be distributed to all web application
 The date parameter is optional and defaults to the previous day.
 
 ## Ogle Repository
-Parsing request metrics from the logs is a time consuming task - to shorten metrics response times register one of Ogle Repository NuGet packages. 
+Parsing request metrics from the logs is a time consuming task - to shorten metrics response times register one of Ogle Repository NuGet packages.
 
 - Ogle.Repository.File
 - Ogle.Repository.MsSqlServer
