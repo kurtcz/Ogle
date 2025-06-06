@@ -74,7 +74,7 @@ namespace Ogle
                                                 v => v.GetCustomAttributes(true)
                                                       .Single(j => j is MaxLengthAttribute) as MaxLengthAttribute);
             var lineNumber = 0;
-            string? generatedId = null;            
+            string? generatedId = null;
 
             foreach (var readLineContext in ReadLogs(options.Date.Value))
             {
@@ -275,7 +275,8 @@ namespace Ogle
 
             if (!string.IsNullOrEmpty(_settings.CurrentValue.LogIndexFolder))
             {
-                var indexSearchResult = IndexSearchLogContent(EscapeLuceneSpecialChars(searchTerm), filePattern, date);
+                //searchTerm = EscapeLuceneSpecialChars(searchTerm);
+                var indexSearchResult = IndexSearchLogContent(searchTerm, filePattern, date);
 
                 if (!string.IsNullOrEmpty(indexSearchResult))
                 {
@@ -291,7 +292,8 @@ namespace Ogle
                 throw new ArgumentNullException(nameof(date));
             }
 
-            foreach (var readLineContext in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, ++firstLine, UnescapeLuceneSpecialChars(filePattern)))
+            //filePattern = UnescapeLuceneSpecialChars(filePattern);
+            foreach (var readLineContext in ReadLogs(date ?? DateOnly.FromDateTime(DateTime.Today), firstFile, ++firstLine, filePattern))
             {
                 var logLine = readLineContext.Line;
                 var filename = Path.GetFileName(readLineContext.Filename);
@@ -751,7 +753,7 @@ namespace Ogle
 
                     yield return new ReadLineContext
                     {
-                        Filename = file,
+                        Filename = Path.GetFileName(file),
                         LineNumber = lineNumber,
                         Line = line
                     };

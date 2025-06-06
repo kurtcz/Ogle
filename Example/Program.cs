@@ -46,7 +46,7 @@ namespace Example
                     };
                 });
             });
-            builder.Services.AddOgleSqliteRepository<LogMetrics>(builder.Configuration.GetSection("Ogle:RepositorySettings"));
+            //builder.Services.AddOgleSqliteRepository<LogMetrics>(builder.Configuration.GetSection("Ogle:RepositorySettings"));
 
             // Ensure that Ogle controllers and razor pages are accessible
             builder.Services.AddControllers(options =>

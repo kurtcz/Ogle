@@ -8,9 +8,11 @@
     ViewBag.Title = "Log Metrics";
 }
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.rawgit.com/harvesthq/chosen/gh-pages/chosen.jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"></script>
 <script src="~/_content/Ogle/js/chart.plugin.datatable-filler.js"></script>
 
+<link href="https://cdn.rawgit.com/harvesthq/chosen/gh-pages/chosen.min.css" rel="stylesheet"/>
 <link rel="stylesheet" href="~/_content/Ogle/css/site.css" />
 <style>
     .mainGrid {
@@ -153,8 +155,8 @@
                             if (prop != Model.TimeBucketProperty)
                             {
                                 @Model.KeyPropertyDisplayNames[i] <br />
-                                <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
-                                    <option selected="selected">All</option>
+                                <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);" multiple class="chosen-select" data-placeholder="All">
+                                    <!--<option selected="selected">All</option>-->
                                 </select> <br />
                             }
                             i++;
@@ -210,8 +212,8 @@
                             if (prop != Model.TimeBucketProperty)
                             {
                                 @Model.KeyPropertyDisplayNames[i] <br />
-                                <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);">
-                                    <option selected="selected">All</option>
+                                <select id="@($"chartFilter-{prop}")" data-key="@prop" onchange="filterChanged(this);" multiple class="chosen-select" data-placeholder="All">
+                                    <!--<option selected="selected">All</option>-->
                                 </select> <br />
                             }
                             i++;
@@ -493,6 +495,7 @@
     });
 
     $(document).ready(function () {
+        $('.chosen-select').chosen();
         $('.viewButtonsContainer input[type=button]')[0].click();
         @if(!string.IsNullOrWhiteSpace(Model.Error))
         {
@@ -645,7 +648,7 @@
         for (var key in filters) {
             var filter = filters[key];
 
-            dataset = dataset.filter(j => !filter.value || filter.keyAccessor(j) == filter.value);
+            dataset = dataset.filter(j => !filter.value || filter.value == "" || filter.value.includes(filter.keyAccessor(j)));
         }
 
         return dataset;
@@ -688,7 +691,7 @@
     {
         @Html.Raw($"\t\t\tvar values_{prop} = dataResponses.{Model.TotalProperty}.map(i => i.{prop}).distinctCaseInsensitive();\n");
         @Html.Raw($"\t\t\t$(\"#chartFilter-{prop}\").find('option').remove().end();\n");
-        @Html.Raw($"\t\t\t$(\"#chartFilter-{prop}\").append(new Option(\"All\", \"\", true, true));\n");
+        //@Html.Raw($"\t\t\t$(\"#chartFilter-{prop}\").append(new Option(\"All\", \"\", true, true));\n");
         @Html.Raw($"\t\t\tfor (var i in values_{prop})\n");
         @Html.Raw($"\t\t\t{{\n\t\t\t\t$(\"#chartFilter-{prop}\").append(new Option(values_{prop}[i], values_{prop}[i]));\n\t\t\t}}\n");
     }
@@ -719,6 +722,7 @@
         }
     }
 }
+        $(".chosen-select").trigger("chosen:updated");
         showMetrics();
     }
 
